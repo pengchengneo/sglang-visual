@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import type { ModelArchitecture, Layer } from "../../types/model";
+import type { Dtype, Quantization } from "../../App";
 import {
   formatParams,
   formatMemory,
@@ -11,9 +12,12 @@ import { ArchitectureDiagram } from "../architecture/ArchitectureDiagram";
 interface Props {
   model: ModelArchitecture;
   tpSize: number;
+  bytesPerParam: number;
+  dtype: Dtype;
+  quantization: Quantization;
 }
 
-export function PipelineView({ model, tpSize }: Props) {
+export function PipelineView({ model, tpSize, bytesPerParam, dtype, quantization }: Props) {
   const [selectedOpName, setSelectedOpName] = useState<string | null>(null);
 
   const totalParams = useMemo(() => computeTotalParams(model), [model]);
@@ -25,6 +29,10 @@ export function PipelineView({ model, tpSize }: Props) {
     () => computeTotalCommOps(model, tpSize),
     [model, tpSize],
   );
+
+  const dtypeLabel = quantization !== "none"
+    ? quantization.toUpperCase()
+    : dtype.toUpperCase();
 
   const handleSelectOp = (name: string | null, _layer: Layer | null) => {
     setSelectedOpName(name);
@@ -45,8 +53,8 @@ export function PipelineView({ model, tpSize }: Props) {
         </div>
         <span className="stat-sep">{"\u00b7"}</span>
         <div className="stat-item">
-          <span className="stat-val">{formatMemory(perRankParams)}</span>
-          <span className="stat-lbl">FP16</span>
+          <span className="stat-val">{formatMemory(perRankParams, bytesPerParam)}</span>
+          <span className="stat-lbl">{dtypeLabel}</span>
         </div>
         <span className="stat-sep">{"\u00b7"}</span>
         <div className="stat-item">

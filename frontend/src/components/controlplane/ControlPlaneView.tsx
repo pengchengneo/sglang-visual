@@ -1,15 +1,28 @@
 /**
  * Control Plane conceptual architecture diagram.
  *
- * Shows SGLang runtime layers: HTTP API → TokenizerManager → Scheduler →
- * TpModelWorker → ModelRunner → GPU.
+ * Shows SGLang runtime layers: HTTP API -> TokenizerManager -> Scheduler ->
+ * TpModelWorker -> ModelRunner -> GPU.
  *
- * When DP > 1, adds a DataParallelRouter and renders side-by-side DP groups.
+ * When DP Attention is enabled, shows DataParallelController with separate
+ * schedulers but shared worker pool. When traditional DP > 1 (no dp_attention),
+ * shows side-by-side DP groups.
  */
+
+import type { SchedulePolicy, SpecAlgorithm } from "../../App";
 
 interface Props {
   tpSize: number;
   dpSize: number;
+  ppSize: number;
+  enableDpAttention: boolean;
+  schedulePolicy: SchedulePolicy;
+  chunkedPrefillSize: number;
+  disableRadixCache: boolean;
+  specAlgorithm: SpecAlgorithm;
+  specNumDraftTokens: number;
+  cudaGraphMaxBs: number;
+  disableCudaGraph: boolean;
 }
 
 /* ── Block color presets (same palette as ArchitectureDiagram) ── */
@@ -23,6 +36,21 @@ const S = {
   moe:       { fill: "#cffafe", stroke: "#67e8f9", text: "#155e75" },
   router:    { fill: "#fff7ed", stroke: "#fdba74", text: "#9a3412" },
 } as const;
+
+const POLICY_LABELS: Record<SchedulePolicy, string> = {
+  fcfs: "FCFS",
+  lpm: "LPM",
+  random: "Random",
+  "dfs-weight": "DFS-Weight",
+};
+
+const SPEC_LABELS: Record<SpecAlgorithm, string> = {
+  none: "",
+  eagle: "EAGLE",
+  eagle3: "EAGLE-3",
+  nextn: "NextN",
+  ngram: "N-Gram",
+};
 
 /* ── Helpers ── */
 
@@ -40,12 +68,13 @@ interface BlockProps {
   title: string;
   subtitle?: string;
   style: { fill: string; stroke: string; text: string };
+  disabled?: boolean;
 }
 
-function CpBlock({ title, subtitle, style }: BlockProps) {
+function CpBlock({ title, subtitle, style, disabled }: BlockProps) {
   return (
     <div
-      className="cp-block"
+      className={`cp-block${disabled ? " cp-block-disabled" : ""}`}
       style={{
         backgroundColor: style.fill,
         borderColor: style.stroke,
@@ -58,10 +87,10 @@ function CpBlock({ title, subtitle, style }: BlockProps) {
   );
 }
 
-function CpSubBlock({ title, subtitle, style }: BlockProps) {
+function CpSubBlock({ title, subtitle, style, disabled }: BlockProps) {
   return (
     <div
-      className="cp-sub-block"
+      className={`cp-sub-block${disabled ? " cp-block-disabled" : ""}`}
       style={{
         backgroundColor: style.fill,
         borderColor: style.stroke,
@@ -74,58 +103,84 @@ function CpSubBlock({ title, subtitle, style }: BlockProps) {
   );
 }
 
-/* ── Single DP group column (Scheduler → Workers → Runner → GPU) ── */
+/* ── Scheduler section box (reusable) ── */
 
-function DpGroupColumn({ tpSize, label }: { tpSize: number; label?: string }) {
+function SchedulerSection({
+  schedulePolicy,
+  chunkedPrefillSize,
+  disableRadixCache,
+}: {
+  schedulePolicy: SchedulePolicy;
+  chunkedPrefillSize: number;
+  disableRadixCache: boolean;
+}) {
   return (
-    <div className="cp-dp-group">
-      {label && <div className="cp-dp-group-label">{label}</div>}
-
-      {/* Scheduler */}
-      <div
-        className="section-box cp-section"
-        style={{
-          borderColor: S.moe.stroke,
-          background: "rgba(207,250,254,0.10)",
-        }}
-      >
-        <div className="section-box-title" style={{ color: S.moe.text }}>
-          Scheduler
-        </div>
-        <div className="section-box-body">
-          <div className="cp-sub-blocks">
-            <CpSubBlock
-              title="Waiting Queue"
-              subtitle="priority · FCFS"
-              style={S.input}
-            />
-            <CpSubBlock
-              title="Running Batch"
-              subtitle="continuous batching"
-              style={S.attention}
-            />
-          </div>
-
-          <VArrow />
-
-          <CpSubBlock
-            title="RadixAttention Tree"
-            subtitle="prefix caching · automatic reuse"
-            style={S.moe}
-          />
-
-          <VArrow />
-
-          <CpSubBlock
-            title="Chunked Prefill"
-            subtitle="interleave prefill & decode"
-            style={S.mlp}
-          />
-        </div>
+    <div
+      className="section-box cp-section"
+      style={{
+        borderColor: S.moe.stroke,
+        background: "rgba(207,250,254,0.10)",
+      }}
+    >
+      <div className="section-box-title" style={{ color: S.moe.text }}>
+        Scheduler
       </div>
+      <div className="section-box-body">
+        <div className="cp-sub-blocks">
+          <CpSubBlock
+            title="Waiting Queue"
+            subtitle={`policy: ${POLICY_LABELS[schedulePolicy]}`}
+            style={S.input}
+          />
+          <CpSubBlock
+            title="Running Batch"
+            subtitle="continuous batching"
+            style={S.attention}
+          />
+        </div>
 
-      <VArrow label="schedule batch" />
+        <VArrow />
 
+        <CpSubBlock
+          title="RadixAttention Tree"
+          subtitle="prefix caching · automatic reuse"
+          style={S.moe}
+          disabled={disableRadixCache}
+        />
+
+        <VArrow />
+
+        <CpSubBlock
+          title="Chunked Prefill"
+          subtitle={`chunk size: ${chunkedPrefillSize.toLocaleString()}`}
+          style={S.mlp}
+        />
+      </div>
+    </div>
+  );
+}
+
+/* ── Worker + Runner + GPU stack (reusable) ── */
+
+function WorkerStack({
+  tpSize,
+  specAlgorithm,
+  specNumDraftTokens,
+  cudaGraphMaxBs,
+  disableCudaGraph,
+}: {
+  tpSize: number;
+  specAlgorithm: SpecAlgorithm;
+  specNumDraftTokens: number;
+  cudaGraphMaxBs: number;
+  disableCudaGraph: boolean;
+}) {
+  const cudaLabel = disableCudaGraph
+    ? "No CUDA Graph"
+    : `CUDA Graph (bs ≤ ${cudaGraphMaxBs})`;
+
+  return (
+    <>
       {/* TpModelWorker */}
       <CpBlock
         title={`TpModelWorker${tpSize > 1 ? ` × ${tpSize}` : ""}`}
@@ -138,9 +193,21 @@ function DpGroupColumn({ tpSize, label }: { tpSize: number; label?: string }) {
       {/* ModelRunner */}
       <CpBlock
         title="ModelRunner"
-        subtitle="forward pass · attention backend · sampling"
+        subtitle={`forward pass · attention backend · sampling · ${cudaLabel}`}
         style={S.mlp}
       />
+
+      {/* Speculative Decoding block */}
+      {specAlgorithm !== "none" && (
+        <>
+          <VArrow label="speculate" />
+          <CpBlock
+            title="Speculative Decoding"
+            subtitle={`${SPEC_LABELS[specAlgorithm]} · ${specNumDraftTokens} draft tokens`}
+            style={S.router}
+          />
+        </>
+      )}
 
       <VArrow />
 
@@ -150,16 +217,77 @@ function DpGroupColumn({ tpSize, label }: { tpSize: number; label?: string }) {
         subtitle="CUDA kernels · FlashInfer / Triton"
         style={S.comm}
       />
+    </>
+  );
+}
+
+/* ── Single DP group column (Scheduler → Workers → Runner → GPU) ── */
+
+function DpGroupColumn({
+  tpSize,
+  label,
+  schedulePolicy,
+  chunkedPrefillSize,
+  disableRadixCache,
+  specAlgorithm,
+  specNumDraftTokens,
+  cudaGraphMaxBs,
+  disableCudaGraph,
+}: {
+  tpSize: number;
+  label?: string;
+  schedulePolicy: SchedulePolicy;
+  chunkedPrefillSize: number;
+  disableRadixCache: boolean;
+  specAlgorithm: SpecAlgorithm;
+  specNumDraftTokens: number;
+  cudaGraphMaxBs: number;
+  disableCudaGraph: boolean;
+}) {
+  return (
+    <div className="cp-dp-group">
+      {label && <div className="cp-dp-group-label">{label}</div>}
+
+      <SchedulerSection
+        schedulePolicy={schedulePolicy}
+        chunkedPrefillSize={chunkedPrefillSize}
+        disableRadixCache={disableRadixCache}
+      />
+
+      <VArrow label="schedule batch" />
+
+      <WorkerStack
+        tpSize={tpSize}
+        specAlgorithm={specAlgorithm}
+        specNumDraftTokens={specNumDraftTokens}
+        cudaGraphMaxBs={cudaGraphMaxBs}
+        disableCudaGraph={disableCudaGraph}
+      />
     </div>
   );
 }
 
 /* ── Main Component ── */
 
-export function ControlPlaneView({ tpSize, dpSize }: Props) {
+export function ControlPlaneView({
+  tpSize,
+  dpSize,
+  ppSize,
+  enableDpAttention,
+  schedulePolicy,
+  chunkedPrefillSize,
+  disableRadixCache,
+  specAlgorithm,
+  specNumDraftTokens,
+  cudaGraphMaxBs,
+  disableCudaGraph,
+}: Props) {
+  const useDpAttn = enableDpAttention && dpSize > 1;
+
+  // For traditional DP (non dp_attention), show side-by-side groups
   // For large DP, collapse into a single representative group
-  const showCollapsed = dpSize > 4;
-  const groupCount = showCollapsed ? 1 : dpSize;
+  const showCollapsedDp = !useDpAttn && dpSize > 4;
+  const dpGroupCount = showCollapsedDp ? 1 : dpSize;
 
   return (
     <div className="control-plane-view arch-vertical">
@@ -171,11 +299,54 @@ export function ControlPlaneView({ tpSize, dpSize }: Props) {
       {/* TokenizerManager */}
       <CpBlock title="TokenizerManager" subtitle="tokenize · detokenize · stream" style={S.norm} />
 
-      {dpSize > 1 ? (
+      {useDpAttn ? (
+        /* ── DP Attention mode ── */
         <>
           <VArrow label="token ids" />
 
-          {/* DataParallelRouter — NEW */}
+          <CpBlock
+            title="DataParallelController"
+            subtitle={`dp_attention · ${dpSize} schedulers`}
+            style={S.router}
+          />
+
+          <VArrow label="route to scheduler" />
+
+          {/* Multiple schedulers side by side */}
+          <div className="cp-dp-fan-out">
+            {Array.from({ length: dpSize }, (_, i) => (
+              <div key={i} className="cp-dp-group">
+                <div className="cp-dp-group-label">Scheduler {i}</div>
+                <SchedulerSection
+                  schedulePolicy={schedulePolicy}
+                  chunkedPrefillSize={chunkedPrefillSize}
+                  disableRadixCache={disableRadixCache}
+                />
+              </div>
+            ))}
+          </div>
+
+          <VArrow label="all join shared worker pool" />
+
+          {/* Shared worker pool */}
+          <WorkerStack
+            tpSize={tpSize}
+            specAlgorithm={specAlgorithm}
+            specNumDraftTokens={specNumDraftTokens}
+            cudaGraphMaxBs={cudaGraphMaxBs}
+            disableCudaGraph={disableCudaGraph}
+          />
+
+          {/* DP Attention annotation */}
+          <div className="cp-dp-attn-note">
+            Per-layer: Attention (DP sub-groups) → gather → MLP (full TP) → scatter
+          </div>
+        </>
+      ) : dpSize > 1 ? (
+        /* ── Traditional DP mode ── */
+        <>
+          <VArrow label="token ids" />
+
           <CpBlock
             title="DataParallelRouter"
             subtitle="round-robin / load balance"
@@ -184,98 +355,65 @@ export function ControlPlaneView({ tpSize, dpSize }: Props) {
 
           <VArrow label="route to DP group" />
 
-          {/* DP groups side by side */}
           <div className="cp-dp-fan-out">
-            {showCollapsed ? (
+            {showCollapsedDp ? (
               <DpGroupColumn
                 tpSize={tpSize}
                 label={`DP Group 0 … ${dpSize - 1}  (× ${dpSize})`}
+                schedulePolicy={schedulePolicy}
+                chunkedPrefillSize={chunkedPrefillSize}
+                disableRadixCache={disableRadixCache}
+                specAlgorithm={specAlgorithm}
+                specNumDraftTokens={specNumDraftTokens}
+                cudaGraphMaxBs={cudaGraphMaxBs}
+                disableCudaGraph={disableCudaGraph}
               />
             ) : (
-              Array.from({ length: groupCount }, (_, i) => (
+              Array.from({ length: dpGroupCount }, (_, i) => (
                 <DpGroupColumn
                   key={i}
                   tpSize={tpSize}
                   label={`DP Group ${i}`}
+                  schedulePolicy={schedulePolicy}
+                  chunkedPrefillSize={chunkedPrefillSize}
+                  disableRadixCache={disableRadixCache}
+                  specAlgorithm={specAlgorithm}
+                  specNumDraftTokens={specNumDraftTokens}
+                  cudaGraphMaxBs={cudaGraphMaxBs}
+                  disableCudaGraph={disableCudaGraph}
                 />
               ))
             )}
           </div>
         </>
       ) : (
+        /* ── Single (no DP) mode ── */
         <>
           <VArrow label="token ids" />
 
-          {/* Scheduler — section box */}
-          <div
-            className="section-box cp-section"
-            style={{
-              borderColor: S.moe.stroke,
-              background: "rgba(207,250,254,0.10)",
-            }}
-          >
-            <div className="section-box-title" style={{ color: S.moe.text }}>
-              Scheduler
-            </div>
-            <div className="section-box-body">
-              <div className="cp-sub-blocks">
-                <CpSubBlock
-                  title="Waiting Queue"
-                  subtitle="priority · FCFS"
-                  style={S.input}
-                />
-                <CpSubBlock
-                  title="Running Batch"
-                  subtitle="continuous batching"
-                  style={S.attention}
-                />
-              </div>
-
-              <VArrow />
-
-              <CpSubBlock
-                title="RadixAttention Tree"
-                subtitle="prefix caching · automatic reuse"
-                style={S.moe}
-              />
-
-              <VArrow />
-
-              <CpSubBlock
-                title="Chunked Prefill"
-                subtitle="interleave prefill & decode"
-                style={S.mlp}
-              />
-            </div>
-          </div>
+          <SchedulerSection
+            schedulePolicy={schedulePolicy}
+            chunkedPrefillSize={chunkedPrefillSize}
+            disableRadixCache={disableRadixCache}
+          />
 
           <VArrow label="schedule batch" />
 
-          {/* TpModelWorker */}
-          <CpBlock
-            title={`TpModelWorker${tpSize > 1 ? ` × ${tpSize}` : ""}`}
-            subtitle={tpSize > 1 ? "one worker per TP rank · NCCL" : "single worker"}
-            style={S.attention}
-          />
-
-          <VArrow label="forward" />
-
-          {/* ModelRunner */}
-          <CpBlock
-            title="ModelRunner"
-            subtitle="forward pass · attention backend · sampling"
-            style={S.mlp}
-          />
-
-          <VArrow />
-
-          {/* GPU */}
-          <CpBlock
-            title={`GPU${tpSize > 1 ? ` × ${tpSize}` : ""}`}
-            subtitle="CUDA kernels · FlashInfer / Triton"
-            style={S.comm}
+          <WorkerStack
+            tpSize={tpSize}
+            specAlgorithm={specAlgorithm}
+            specNumDraftTokens={specNumDraftTokens}
+            cudaGraphMaxBs={cudaGraphMaxBs}
+            disableCudaGraph={disableCudaGraph}
           />
         </>
+      )}
+
+      {/* PP annotation */}
+      {ppSize > 1 && (
+        <div className="cp-dp-attn-note">
+          Pipeline Parallelism: {ppSize} stages × {tpSize} TP = {tpSize * ppSize} GPUs
+        </div>
       )}
     </div>
   );

@@ -14,27 +14,37 @@ interface Props {
   config: ModelConfig;
   tpSize: number;
   dpSize: number;
+  ppSize: number;
+  enableDpAttention: boolean;
   perRankParams: number;
   gpuMemoryBytes: number;
   memFractionStatic: number;
+  bytesPerParam: number;
+  kvBytesPerElement: number;
+  contextLength: number;
 }
 
 export function GpuMemoryPanel({
   config,
   tpSize,
   dpSize,
+  ppSize,
+  enableDpAttention,
   perRankParams,
   gpuMemoryBytes,
   memFractionStatic,
+  bytesPerParam,
+  kvBytesPerElement,
+  contextLength,
 }: Props) {
   const weightBytes = useMemo(
-    () => computeWeightMemoryBytes(perRankParams),
-    [perRankParams],
+    () => computeWeightMemoryBytes(perRankParams, bytesPerParam),
+    [perRankParams, bytesPerParam],
   );
 
   const kvPerToken = useMemo(
-    () => computeKvPerTokenBytes(config, tpSize),
-    [config, tpSize],
+    () => computeKvPerTokenBytes(config, tpSize, kvBytesPerElement),
+    [config, tpSize, kvBytesPerElement],
   );
 
   const breakdown = useMemo(
@@ -48,6 +58,9 @@ export function GpuMemoryPanel({
   );
 
   const isMla = config.kv_lora_rank != null;
+  const useDpAttn = enableDpAttention && dpSize > 1;
+  const attnTpSize = useDpAttn ? tpSize / dpSize : tpSize;
+  const totalGpus = tpSize * ppSize;
 
   return (
     <div className="gpu-memory-panel">
@@ -69,11 +82,64 @@ export function GpuMemoryPanel({
         </div>
       </div>
 
-      {/* GPU Topology Grid — shown when DP > 1 */}
-      {dpSize > 1 && (
+      {/* Context Length Comparison */}
+      <div className="context-comparison">
+        <span className="context-comparison-label">Context vs KV capacity:</span>
+        {kvSlots >= contextLength ? (
+          <span className="context-ok">
+            {kvSlots.toLocaleString()} slots ≥ {contextLength.toLocaleString()} ctx
+          </span>
+        ) : (
+          <span className="context-warning">
+            {kvSlots.toLocaleString()} slots &lt; {contextLength.toLocaleString()} ctx — KV cache insufficient
+          </span>
+        )}
+      </div>
+
+      {/* GPU Topology Grid — DP Attention mode */}
+      {useDpAttn && (
         <div className="gpu-topology-grid">
           <div className="gpu-topology-title">
-            GPU Topology (DP={dpSize}, TP={tpSize})
+            GPU Topology (DP Attention: {dpSize} groups × {attnTpSize} TP)
+          </div>
+          <table className="gpu-topology-table">
+            <thead>
+              <tr>
+                <th />
+                {Array.from({ length: attnTpSize }, (_, t) => (
+                  <th key={t}>attn_tp{t}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {Array.from({ length: dpSize }, (_, d) => (
+                <tr key={d}>
+                  <td className="gpu-topology-row-label">dp_group{d}</td>
+                  {Array.from({ length: attnTpSize }, (_, t) => {
+                    const gpuId = d * attnTpSize + t;
+                    return (
+                      <td key={t}>
+                        <span
+                          className="gpu-topology-cell"
+                          style={{ background: getRankColor(gpuId) }}
+                        >
+                          {gpuId}
+                        </span>
+                      </td>
+                    );
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* GPU Topology Grid — PP mode (no DP attention) */}
+      {ppSize > 1 && !useDpAttn && (
+        <div className="gpu-topology-grid">
+          <div className="gpu-topology-title">
+            GPU Topology (PP={ppSize}, TP={tpSize}) — {totalGpus} GPUs
           </div>
           <table className="gpu-topology-table">
             <thead>
@@ -85,11 +151,11 @@ export function GpuMemoryPanel({
               </tr>
             </thead>
             <tbody>
-              {Array.from({ length: dpSize }, (_, d) => (
-                <tr key={d}>
-                  <td className="gpu-topology-row-label">DP{d}</td>
+              {Array.from({ length: ppSize }, (_, p) => (
+                <tr key={p}>
+                  <td className="gpu-topology-row-label">PP{p}</td>
                   {Array.from({ length: tpSize }, (_, t) => {
-                    const gpuId = d * tpSize + t;
+                    const gpuId = p * tpSize + t;
                     return (
                       <td key={t}>
                         <span
@@ -108,26 +174,27 @@ export function GpuMemoryPanel({
         </div>
       )}
 
-      {/* GPU Cards — grouped by DP when dpSize > 1 */}
-      {dpSize > 1 ? (
+      {/* GPU Cards */}
+      {useDpAttn ? (
         <div className="dp-groups-container">
           {Array.from({ length: dpSize }, (_, dpRank) => (
             <div key={dpRank} className="dp-group">
-              <div className="dp-group-header">DP Group {dpRank}</div>
+              <div className="dp-group-header">DP Attention Group {dpRank}</div>
               <div className="gpu-cards">
-                {Array.from({ length: tpSize }, (_, tpRank) => {
-                  const globalGpuId = dpRank * tpSize + tpRank;
+                {Array.from({ length: attnTpSize }, (_, tpRank) => {
+                  const globalGpuId = dpRank * attnTpSize + tpRank;
                   return (
                     <GpuCard
                       key={globalGpuId}
                       rank={tpRank}
-                      color={getRankColor(tpRank)}
+                      color={getRankColor(globalGpuId)}
                       breakdown={breakdown}
                       kvSlots={kvSlots}
                       kvPerToken={kvPerToken}
                       dpRank={dpRank}
                       tpRank={tpRank}
                       globalGpuId={globalGpuId}
+                      dpAttention
                     />
                   );
                 })}

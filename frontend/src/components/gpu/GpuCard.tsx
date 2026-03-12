@@ -10,6 +10,7 @@ interface Props {
   dpRank?: number;
   tpRank?: number;
   globalGpuId?: number;
+  dpAttention?: boolean;
 }
 
 export function GpuCard({
@@ -21,6 +22,7 @@ export function GpuCard({
   dpRank,
   tpRank,
   globalGpuId,
+  dpAttention,
 }: Props) {
   const { totalBytes, weights, kvCache, reserved, oom } = breakdown;
 
@@ -30,7 +32,9 @@ export function GpuCard({
 
   const hasDP = dpRank !== undefined;
   const headerLabel = hasDP
-    ? `GPU ${globalGpuId} · DP${dpRank} TP${tpRank}`
+    ? dpAttention
+      ? `GPU ${globalGpuId} · attn_dp${dpRank} attn_tp${tpRank}`
+      : `GPU ${globalGpuId} · DP${dpRank} TP${tpRank}`
     : `GPU ${rank} (Rank ${rank})`;
 
   return (
