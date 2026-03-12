@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import type { ModelArchitecture, Layer, Operator } from "../../types/model";
+import type { ModelArchitecture, Layer } from "../../types/model";
 import {
   formatParams,
   formatMemory,
@@ -8,7 +8,6 @@ import {
   recomputeEmbeddingTpShape,
 } from "../../utils/tpMath";
 import { ArchitectureDiagram } from "../architecture/ArchitectureDiagram";
-import { MatrixPartitionViz } from "../matrix/MatrixPartitionViz";
 
 interface Props {
   model: ModelArchitecture;
@@ -17,7 +16,6 @@ interface Props {
 
 export function PipelineView({ model, tpSize }: Props) {
   const [selectedOpName, setSelectedOpName] = useState<string | null>(null);
-  const [selectedLayer, setSelectedLayer] = useState<Layer | null>(null);
 
   const totalParams = useMemo(() => computeTotalParams(model), [model]);
   const perRankParams = useMemo(
@@ -29,16 +27,9 @@ export function PipelineView({ model, tpSize }: Props) {
     [model, tpSize],
   );
 
-  const handleSelectOp = (name: string | null, layer: Layer | null) => {
+  const handleSelectOp = (name: string | null, _layer: Layer | null) => {
     setSelectedOpName(name);
-    setSelectedLayer(layer);
   };
-
-  // Resolve the selected operator for MatrixPartitionViz
-  const selectedOperator: Operator | null = useMemo(() => {
-    if (!selectedOpName || !selectedLayer) return null;
-    return selectedLayer.operators.find((op) => op.name === selectedOpName) ?? null;
-  }, [selectedOpName, selectedLayer]);
 
   return (
     <div className="pipeline-view">
@@ -65,24 +56,13 @@ export function PipelineView({ model, tpSize }: Props) {
         </div>
       </div>
 
-      {/* Architecture diagram */}
+      {/* Architecture diagram (TP viz is inline) */}
       <ArchitectureDiagram
         model={model}
         tpSize={tpSize}
         selectedOp={selectedOpName}
         onSelectOp={handleSelectOp}
       />
-
-      {/* Matrix partition viz for selected operator */}
-      {selectedOperator && selectedOperator.op_type !== "comm" && (
-        <div className="matrix-viz-container">
-          <MatrixPartitionViz
-            op={selectedOperator}
-            config={model.config}
-            tpSize={tpSize}
-          />
-        </div>
-      )}
     </div>
   );
 }
