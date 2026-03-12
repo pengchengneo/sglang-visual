@@ -1,0 +1,34 @@
+[
+  {
+    "id": "llama3_8b",
+    "model_id": "meta-llama/Llama-3.1-8B",
+    "family": "llama",
+    "num_layers": 32,
+    "hidden_size": 4096,
+    "file": "llama3_8b.json"
+  },
+  {
+    "id": "llama3_70b",
+    "model_id": "meta-llama/Llama-3.1-70B",
+    "family": "llama",
+    "num_layers": 80,
+    "hidden_size": 8192,
+    "file": "llama3_70b.json"
+  },
+  {
+    "id": "deepseek_v2_lite",
+    "model_id": "deepseek-ai/DeepSeek-V2-Lite",
+    "family": "deepseek_v2",
+    "num_layers": 27,
+    "hidden_size": 2048,
+    "file": "deepseek_v2_lite.json"
+  },
+  {
+    "id": "deepseek_v3",
+    "model_id": "deepseek-ai/DeepSeek-V3",
+    "family": "deepseek_v2",
+    "num_layers": 61,
+    "hidden_size": 7168,
+    "file": "deepseek_v3.json"
+  }
+]

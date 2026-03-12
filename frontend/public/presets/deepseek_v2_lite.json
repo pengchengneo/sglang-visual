@@ -1,0 +1,5828 @@
+{
+  "model_id": "deepseek-ai/DeepSeek-V2-Lite",
+  "model_family": "deepseek_v2",
+  "tp_size": 1,
+  "config": {
+    "hidden_size": 2048,
+    "num_attention_heads": 16,
+    "num_key_value_heads": 16,
+    "head_dim": 128,
+    "intermediate_size": 10944,
+    "num_hidden_layers": 27,
+    "vocab_size": 102400,
+    "kv_lora_rank": 512,
+    "q_lora_rank": 1536,
+    "qk_nope_head_dim": 128,
+    "qk_rope_head_dim": 64,
+    "v_head_dim": 128,
+    "n_routed_experts": 64,
+    "n_shared_experts": 2,
+    "num_experts_per_tok": 6,
+    "moe_intermediate_size": 1408,
+    "first_k_dense_replace": 1
+  },
+  "embedding": {
+    "full_shape": [
+      102400,
+      2048
+    ],
+    "tp_shape": [
+      102400,
+      2048
+    ],
+    "partition_strategy": "column_parallel",
+    "comm_after": "all_reduce"
+  },
+  "lm_head": {
+    "full_shape": [
+      102400,
+      2048
+    ],
+    "tp_shape": [
+      102400,
+      2048
+    ],
+    "partition_strategy": "column_parallel",
+    "comm_after": null
+  },
+  "layers": [
+    {
+      "layer_id": 0,
+      "layer_type": "dense",
+      "operators": [
+        {
+          "name": "fused_qkv_a_proj_with_mqa",
+          "op_type": "linear",
+          "linear_type": "ReplicatedLinear",
+          "full_weight_shape": [
+            2112,
+            2048
+          ],
+          "tp_weight_shape": [
+            2112,
+            2048
+          ],
+          "partition": {
+            "dim": -1,
+            "strategy": "replicated",
+            "details": "Replicated: projects to small latent space (q_lora=1536 + kv_lora=512 + rope=64). Not worth sharding."
+          },
+          "comm_after": null,
+          "sub_components": [
+            "q_a_proj",
+            "kv_a_proj_with_mqa"
+          ]
+        },
+        {
+          "name": "q_b_proj",
+          "op_type": "linear",
+          "linear_type": "ColumnParallelLinear",
+          "full_weight_shape": [
+            3072,
+            1536
+          ],
+          "tp_weight_shape": [
+            3072,
+            1536
+          ],
+          "partition": {
+            "dim": 1,
+            "strategy": "column_parallel",
+            "details": "Column-parallel: expands latent q (1536) to 16 heads × 192 dim. Split by heads."
+          },
+          "comm_after": null,
+          "sub_components": null
+        },
+        {
+          "name": "kv_b_proj",
+          "op_type": "linear",
+          "linear_type": "ColumnParallelLinear",
+          "full_weight_shape": [
+            4096,
+            512
+          ],
+          "tp_weight_shape": [
+            4096,
+            512
+          ],
+          "partition": {
+            "dim": 1,
+            "strategy": "column_parallel",
+            "details": "Column-parallel: expands KV latent (512) to 16 heads × (128 + 128) dim."
+          },
+          "comm_after": null,
+          "sub_components": null
+        },
+        {
+          "name": "o_proj",
+          "op_type": "linear",
+          "linear_type": "RowParallelLinear",
+          "full_weight_shape": [
+            2048,
+            2048
+          ],
+          "tp_weight_shape": [
+            2048,
+            2048
+          ],
+          "partition": {
+            "dim": 0,
+            "strategy": "row_parallel",
+            "details": "Row-parallel: input 2048 split by heads across ranks."
+          },
+          "comm_after": "all_reduce",
+          "sub_components": null
+        },
+        {
+          "name": "gate_up_proj",
+          "op_type": "linear",
+          "linear_type": "MergedColumnParallelLinear",
+          "full_weight_shape": [
+            21888,
+            2048
+          ],
+          "tp_weight_shape": [
+            21888,
+            2048
+          ],
+          "partition": {
+            "dim": 1,
+            "strategy": "merged_column_parallel",
+            "details": "gate [10944, 2048] + up [10944, 2048] fused, column-split."
+          },
+          "comm_after": null,
+          "sub_components": [
+            "gate_proj",
+            "up_proj"
+          ]
+        },
+        {
+          "name": "down_proj",
+          "op_type": "linear",
+          "linear_type": "RowParallelLinear",
+          "full_weight_shape": [
+            2048,
+            10944
+          ],
+          "tp_weight_shape": [
+            2048,
+            10944
+          ],
+          "partition": {
+            "dim": 0,
+            "strategy": "row_parallel",
+            "details": "Row-parallel: input 10944 split across ranks."
+          },
+          "comm_after": "all_reduce",
+          "sub_components": null
+        }
+      ]
+    },
+    {
+      "layer_id": 1,
+      "layer_type": "moe",
+      "operators": [
+        {
+          "name": "fused_qkv_a_proj_with_mqa",
+          "op_type": "linear",
+          "linear_type": "ReplicatedLinear",
+          "full_weight_shape": [
+            2112,
+            2048
+          ],
+          "tp_weight_shape": [
+            2112,
+            2048
+          ],
+          "partition": {
+            "dim": -1,
+            "strategy": "replicated",
+            "details": "Replicated: projects to small latent space (q_lora=1536 + kv_lora=512 + rope=64). Not worth sharding."
+          },
+          "comm_after": null,
+          "sub_components": [
+            "q_a_proj",
+            "kv_a_proj_with_mqa"
+          ]
+        },
+        {
+          "name": "q_b_proj",
+          "op_type": "linear",
+          "linear_type": "ColumnParallelLinear",
+          "full_weight_shape": [
+            3072,
+            1536
+          ],
+          "tp_weight_shape": [
+            3072,
+            1536
+          ],
+          "partition": {
+            "dim": 1,
+            "strategy": "column_parallel",
+            "details": "Column-parallel: expands latent q (1536) to 16 heads × 192 dim. Split by heads."
+          },
+          "comm_after": null,
+          "sub_components": null
+        },
+        {
+          "name": "kv_b_proj",
+          "op_type": "linear",
+          "linear_type": "ColumnParallelLinear",
+          "full_weight_shape": [
+            4096,
+            512
+          ],
+          "tp_weight_shape": [
+            4096,
+            512
+          ],
+          "partition": {
+            "dim": 1,
+            "strategy": "column_parallel",
+            "details": "Column-parallel: expands KV latent (512) to 16 heads × (128 + 128) dim."
+          },
+          "comm_after": null,
+          "sub_components": null
+        },
+        {
+          "name": "o_proj",
+          "op_type": "linear",
+          "linear_type": "RowParallelLinear",
+          "full_weight_shape": [
+            2048,
+            2048
+          ],
+          "tp_weight_shape": [
+            2048,
+            2048
+          ],
+          "partition": {
+            "dim": 0,
+            "strategy": "row_parallel",
+            "details": "Row-parallel: input 2048 split by heads across ranks."
+          },
+          "comm_after": "all_reduce",
+          "sub_components": null
+        },
+        {
+          "name": "gate",
+          "op_type": "moe_gate",
+          "linear_type": "ReplicatedLinear",
+          "full_weight_shape": [
+            64,
+            2048
+          ],
+          "tp_weight_shape": [
+            64,
+            2048
+          ],
+          "partition": {
+            "dim": -1,
+            "strategy": "replicated",
+            "details": "Router: 64 experts. Replicated across all ranks."
+          },
+          "comm_after": null,
+          "sub_components": null
+        },
+        {
+          "name": "experts_gate_up",
+          "op_type": "linear",
+          "linear_type": "MergedColumnParallelLinear",
+          "full_weight_shape": [
+            64,
+            2816,
+            2048
+          ],
+          "tp_weight_shape": [
+            64,
+            2816,
+            2048
+          ],
+          "partition": {
+            "dim": 1,
+            "strategy": "column_parallel",
+            "details": "64 experts, each gate+up [2816, 2048]. moe_inter dimension split by tp."
+          },
+          "comm_after": null,
+          "sub_components": [
+            "w1 (gate)",
+            "w3 (up)"
+          ]
+        },
+        {
+          "name": "experts_down",
+          "op_type": "linear",
+          "linear_type": "RowParallelLinear",
+          "full_weight_shape": [
+            64,
+            2048,
+            1408
+          ],
+          "tp_weight_shape": [
+            64,
+            2048,
+            1408
+          ],
+          "partition": {
+            "dim": 0,
+            "strategy": "row_parallel",
+            "details": "64 experts, each down [2048, 1408]. Input dim (moe_inter) split by tp."
+          },
+          "comm_after": null,
+          "sub_components": [
+            "w2 (down)"
+          ]
+        },
+        {
+          "name": "shared_experts_gate_up",
+          "op_type": "linear",
+          "linear_type": "MergedColumnParallelLinear",
+          "full_weight_shape": [
+            5632,
+            2048
+          ],
+          "tp_weight_shape": [
+            5632,
+            2048
+          ],
+          "partition": {
+            "dim": 1,
+            "strategy": "merged_column_parallel",
+            "details": "Shared experts (2): gate+up fused, column-split."
+          },
+          "comm_after": null,
+          "sub_components": [
+            "shared_gate_proj",
+            "shared_up_proj"
+          ]
+        },
+        {
+          "name": "shared_experts_down",
+          "op_type": "linear",
+          "linear_type": "RowParallelLinear",
+          "full_weight_shape": [
+            2048,
+            2816
+          ],
+          "tp_weight_shape": [
+            2048,
+            2816
+          ],
+          "partition": {
+            "dim": 0,
+            "strategy": "row_parallel",
+            "details": "Shared experts down: row-parallel."
+          },
+          "comm_after": null,
+          "sub_components": null
+        },
+        {
+          "name": "moe_output_reduce",
+          "op_type": "comm",
+          "linear_type": null,
+          "full_weight_shape": [
+            0,
+            0
+          ],
+          "tp_weight_shape": [
+            0,
+            0
+          ],
+          "partition": null,
+          "comm_after": "all_reduce",
+          "sub_components": null
+        }
+      ]
+    },
+    {
+      "layer_id": 2,
+      "layer_type": "moe",
+      "operators": [
+        {
+          "name": "fused_qkv_a_proj_with_mqa",
+          "op_type": "linear",
+          "linear_type": "ReplicatedLinear",
+          "full_weight_shape": [
+            2112,
+            2048
+          ],
+          "tp_weight_shape": [
+            2112,
+            2048
+          ],
+          "partition": {
+            "dim": -1,
+            "strategy": "replicated",
+            "details": "Replicated: projects to small latent space (q_lora=1536 + kv_lora=512 + rope=64). Not worth sharding."
+          },
+          "comm_after": null,
+          "sub_components": [
+            "q_a_proj",
+            "kv_a_proj_with_mqa"
+          ]
+        },
+        {
+          "name": "q_b_proj",
+          "op_type": "linear",
+          "linear_type": "ColumnParallelLinear",
+          "full_weight_shape": [
+            3072,
+            1536
+          ],
+          "tp_weight_shape": [
+            3072,
+            1536
+          ],
+          "partition": {
+            "dim": 1,
+            "strategy": "column_parallel",
+            "details": "Column-parallel: expands latent q (1536) to 16 heads × 192 dim. Split by heads."
+          },
+          "comm_after": null,
+          "sub_components": null
+        },
+        {
+          "name": "kv_b_proj",
+          "op_type": "linear",
+          "linear_type": "ColumnParallelLinear",
+          "full_weight_shape": [
+            4096,
+            512
+          ],
+          "tp_weight_shape": [
+            4096,
+            512
+          ],
+          "partition": {
+            "dim": 1,
+            "strategy": "column_parallel",
+            "details": "Column-parallel: expands KV latent (512) to 16 heads × (128 + 128) dim."
+          },
+          "comm_after": null,
+          "sub_components": null
+        },
+        {
+          "name": "o_proj",
+          "op_type": "linear",
+          "linear_type": "RowParallelLinear",
+          "full_weight_shape": [
+            2048,
+            2048
+          ],
+          "tp_weight_shape": [
+            2048,
+            2048
+          ],
+          "partition": {
+            "dim": 0,
+            "strategy": "row_parallel",
+            "details": "Row-parallel: input 2048 split by heads across ranks."
+          },
+          "comm_after": "all_reduce",
+          "sub_components": null
+        },
+        {
+          "name": "gate",
+          "op_type": "moe_gate",
+          "linear_type": "ReplicatedLinear",
+          "full_weight_shape": [
+            64,
+            2048
+          ],
+          "tp_weight_shape": [
+            64,
+            2048
+          ],
+          "partition": {
+            "dim": -1,
+            "strategy": "replicated",
+            "details": "Router: 64 experts. Replicated across all ranks."
+          },
+          "comm_after": null,
+          "sub_components": null
+        },
+        {
+          "name": "experts_gate_up",
+          "op_type": "linear",
+          "linear_type": "MergedColumnParallelLinear",
+          "full_weight_shape": [
+            64,
+            2816,
+            2048
+          ],
+          "tp_weight_shape": [
+            64,
+            2816,
+            2048
+          ],
+          "partition": {
+            "dim": 1,
+            "strategy": "column_parallel",
+            "details": "64 experts, each gate+up [2816, 2048]. moe_inter dimension split by tp."
+          },
+          "comm_after": null,
+          "sub_components": [
+            "w1 (gate)",
+            "w3 (up)"
+          ]
+        },
+        {
+          "name": "experts_down",
+          "op_type": "linear",
+          "linear_type": "RowParallelLinear",
+          "full_weight_shape": [
+            64,
+            2048,
+            1408
+          ],
+          "tp_weight_shape": [
+            64,
+            2048,
+            1408
+          ],
+          "partition": {
+            "dim": 0,
+            "strategy": "row_parallel",
+            "details": "64 experts, each down [2048, 1408]. Input dim (moe_inter) split by tp."
+          },
+          "comm_after": null,
+          "sub_components": [
+            "w2 (down)"
+          ]
+        },
+        {
+          "name": "shared_experts_gate_up",
+          "op_type": "linear",
+          "linear_type": "MergedColumnParallelLinear",
+          "full_weight_shape": [
+            5632,
+            2048
+          ],
+          "tp_weight_shape": [
+            5632,
+            2048
+          ],
+          "partition": {
+            "dim": 1,
+            "strategy": "merged_column_parallel",
+            "details": "Shared experts (2): gate+up fused, column-split."
+          },
+          "comm_after": null,
+          "sub_components": [
+            "shared_gate_proj",
+            "shared_up_proj"
+          ]
+        },
+        {
+          "name": "shared_experts_down",
+          "op_type": "linear",
+          "linear_type": "RowParallelLinear",
+          "full_weight_shape": [
+            2048,
+            2816
+          ],
+          "tp_weight_shape": [
+            2048,
+            2816
+          ],
+          "partition": {
+            "dim": 0,
+            "strategy": "row_parallel",
+            "details": "Shared experts down: row-parallel."
+          },
+          "comm_after": null,
+          "sub_components": null
+        },
+        {
+          "name": "moe_output_reduce",
+          "op_type": "comm",
+          "linear_type": null,
+          "full_weight_shape": [
+            0,
+            0
+          ],
+          "tp_weight_shape": [
+            0,
+            0
+          ],
+          "partition": null,
+          "comm_after": "all_reduce",
+          "sub_components": null
+        }
+      ]
+    },
+    {
+      "layer_id": 3,
+      "layer_type": "moe",
+      "operators": [
+        {
+          "name": "fused_qkv_a_proj_with_mqa",
+          "op_type": "linear",
+          "linear_type": "ReplicatedLinear",
+          "full_weight_shape": [
+            2112,
+            2048
+          ],
+          "tp_weight_shape": [
+            2112,
+            2048
+          ],
+          "partition": {
+            "dim": -1,
+            "strategy": "replicated",
+            "details": "Replicated: projects to small latent space (q_lora=1536 + kv_lora=512 + rope=64). Not worth sharding."
+          },
+          "comm_after": null,
+          "sub_components": [
+            "q_a_proj",
+            "kv_a_proj_with_mqa"
+          ]
+        },
+        {
+          "name": "q_b_proj",
+          "op_type": "linear",
+          "linear_type": "ColumnParallelLinear",
+          "full_weight_shape": [
+            3072,
+            1536
+          ],
+          "tp_weight_shape": [
+            3072,
+            1536
+          ],
+          "partition": {
+            "dim": 1,
+            "strategy": "column_parallel",
+            "details": "Column-parallel: expands latent q (1536) to 16 heads × 192 dim. Split by heads."
+          },
+          "comm_after": null,
+          "sub_components": null
+        },
+        {
+          "name": "kv_b_proj",
+          "op_type": "linear",
+          "linear_type": "ColumnParallelLinear",
+          "full_weight_shape": [
+            4096,
+            512
+          ],
+          "tp_weight_shape": [
+            4096,
+            512
+          ],
+          "partition": {
+            "dim": 1,
+            "strategy": "column_parallel",
+            "details": "Column-parallel: expands KV latent (512) to 16 heads × (128 + 128) dim."
+          },
+          "comm_after": null,
+          "sub_components": null
+        },
+        {
+          "name": "o_proj",
+          "op_type": "linear",
+          "linear_type": "RowParallelLinear",
+          "full_weight_shape": [
+            2048,
+            2048
+          ],
+          "tp_weight_shape": [
+            2048,
+            2048
+          ],
+          "partition": {
+            "dim": 0,
+            "strategy": "row_parallel",
+            "details": "Row-parallel: input 2048 split by heads across ranks."
+          },
+          "comm_after": "all_reduce",
+          "sub_components": null
+        },
+        {
+          "name": "gate",
+          "op_type": "moe_gate",
+          "linear_type": "ReplicatedLinear",
+          "full_weight_shape": [
+            64,
+            2048
+          ],
+          "tp_weight_shape": [
+            64,
+            2048
+          ],
+          "partition": {
+            "dim": -1,
+            "strategy": "replicated",
+            "details": "Router: 64 experts. Replicated across all ranks."
+          },
+          "comm_after": null,
+          "sub_components": null
+        },
+        {
+          "name": "experts_gate_up",
+          "op_type": "linear",
+          "linear_type": "MergedColumnParallelLinear",
+          "full_weight_shape": [
+            64,
+            2816,
+            2048
+          ],
+          "tp_weight_shape": [
+            64,
+            2816,
+            2048
+          ],
+          "partition": {
+            "dim": 1,
+            "strategy": "column_parallel",
+            "details": "64 experts, each gate+up [2816, 2048]. moe_inter dimension split by tp."
+          },
+          "comm_after": null,
+          "sub_components": [
+            "w1 (gate)",
+            "w3 (up)"
+          ]
+        },
+        {
+          "name": "experts_down",
+          "op_type": "linear",
+          "linear_type": "RowParallelLinear",
+          "full_weight_shape": [
+            64,
+            2048,
+            1408
+          ],
+          "tp_weight_shape": [
+            64,
+            2048,
+            1408
+          ],
+          "partition": {
+            "dim": 0,
+            "strategy": "row_parallel",
+            "details": "64 experts, each down [2048, 1408]. Input dim (moe_inter) split by tp."
+          },
+          "comm_after": null,
+          "sub_components": [
+            "w2 (down)"
+          ]
+        },
+        {
+          "name": "shared_experts_gate_up",
+          "op_type": "linear",
+          "linear_type": "MergedColumnParallelLinear",
+          "full_weight_shape": [
+            5632,
+            2048
+          ],
+          "tp_weight_shape": [
+            5632,
+            2048
+          ],
+          "partition": {
+            "dim": 1,
+            "strategy": "merged_column_parallel",
+            "details": "Shared experts (2): gate+up fused, column-split."
+          },
+          "comm_after": null,
+          "sub_components": [
+            "shared_gate_proj",
+            "shared_up_proj"
+          ]
+        },
+        {
+          "name": "shared_experts_down",
+          "op_type": "linear",
+          "linear_type": "RowParallelLinear",
+          "full_weight_shape": [
+            2048,
+            2816
+          ],
+          "tp_weight_shape": [
+            2048,
+            2816
+          ],
+          "partition": {
+            "dim": 0,
+            "strategy": "row_parallel",
+            "details": "Shared experts down: row-parallel."
+          },
+          "comm_after": null,
+          "sub_components": null
+        },
+        {
+          "name": "moe_output_reduce",
+          "op_type": "comm",
+          "linear_type": null,
+          "full_weight_shape": [
+            0,
+            0
+          ],
+          "tp_weight_shape": [
+            0,
+            0
+          ],
+          "partition": null,
+          "comm_after": "all_reduce",
+          "sub_components": null
+        }
+      ]
+    },
+    {
+      "layer_id": 4,
+      "layer_type": "moe",
+      "operators": [
+        {
+          "name": "fused_qkv_a_proj_with_mqa",
+          "op_type": "linear",
+          "linear_type": "ReplicatedLinear",
+          "full_weight_shape": [
+            2112,
+            2048
+          ],
+          "tp_weight_shape": [
+            2112,
+            2048
+          ],
+          "partition": {
+            "dim": -1,
+            "strategy": "replicated",
+            "details": "Replicated: projects to small latent space (q_lora=1536 + kv_lora=512 + rope=64). Not worth sharding."
+          },
+          "comm_after": null,
+          "sub_components": [
+            "q_a_proj",
+            "kv_a_proj_with_mqa"
+          ]
+        },
+        {
+          "name": "q_b_proj",
+          "op_type": "linear",
+          "linear_type": "ColumnParallelLinear",
+          "full_weight_shape": [
+            3072,
+            1536
+          ],
+          "tp_weight_shape": [
+            3072,
+            1536
+          ],
+          "partition": {
+            "dim": 1,
+            "strategy": "column_parallel",
+            "details": "Column-parallel: expands latent q (1536) to 16 heads × 192 dim. Split by heads."
+          },
+          "comm_after": null,
+          "sub_components": null
+        },
+        {
+          "name": "kv_b_proj",
+          "op_type": "linear",
+          "linear_type": "ColumnParallelLinear",
+          "full_weight_shape": [
+            4096,
+            512
+          ],
+          "tp_weight_shape": [
+            4096,
+            512
+          ],
+          "partition": {
+            "dim": 1,
+            "strategy": "column_parallel",
+            "details": "Column-parallel: expands KV latent (512) to 16 heads × (128 + 128) dim."
+          },
+          "comm_after": null,
+          "sub_components": null
+        },
+        {
+          "name": "o_proj",
+          "op_type": "linear",
+          "linear_type": "RowParallelLinear",
+          "full_weight_shape": [
+            2048,
+            2048
+          ],
+          "tp_weight_shape": [
+            2048,
+            2048
+          ],
+          "partition": {
+            "dim": 0,
+            "strategy": "row_parallel",
+            "details": "Row-parallel: input 2048 split by heads across ranks."
+          },
+          "comm_after": "all_reduce",
+          "sub_components": null
+        },
+        {
+          "name": "gate",
+          "op_type": "moe_gate",
+          "linear_type": "ReplicatedLinear",
+          "full_weight_shape": [
+            64,
+            2048
+          ],
+          "tp_weight_shape": [
+            64,
+            2048
+          ],
+          "partition": {
+            "dim": -1,
+            "strategy": "replicated",
+            "details": "Router: 64 experts. Replicated across all ranks."
+          },
+          "comm_after": null,
+          "sub_components": null
+        },
+        {
+          "name": "experts_gate_up",
+          "op_type": "linear",
+          "linear_type": "MergedColumnParallelLinear",
+          "full_weight_shape": [
+            64,
+            2816,
+            2048
+          ],
+          "tp_weight_shape": [
+            64,
+            2816,
+            2048
+          ],
+          "partition": {
+            "dim": 1,
+            "strategy": "column_parallel",
+            "details": "64 experts, each gate+up [2816, 2048]. moe_inter dimension split by tp."
+          },
+          "comm_after": null,
+          "sub_components": [
+            "w1 (gate)",
+            "w3 (up)"
+          ]
+        },
+        {
+          "name": "experts_down",
+          "op_type": "linear",
+          "linear_type": "RowParallelLinear",
+          "full_weight_shape": [
+            64,
+            2048,
+            1408
+          ],
+          "tp_weight_shape": [
+            64,
+            2048,
+            1408
+          ],
+          "partition": {
+            "dim": 0,
+            "strategy": "row_parallel",
+            "details": "64 experts, each down [2048, 1408]. Input dim (moe_inter) split by tp."
+          },
+          "comm_after": null,
+          "sub_components": [
+            "w2 (down)"
+          ]
+        },
+        {
+          "name": "shared_experts_gate_up",
+          "op_type": "linear",
+          "linear_type": "MergedColumnParallelLinear",
+          "full_weight_shape": [
+            5632,
+            2048
+          ],
+          "tp_weight_shape": [
+            5632,
+            2048
+          ],
+          "partition": {
+            "dim": 1,
+            "strategy": "merged_column_parallel",
+            "details": "Shared experts (2): gate+up fused, column-split."
+          },
+          "comm_after": null,
+          "sub_components": [
+            "shared_gate_proj",
+            "shared_up_proj"
+          ]
+        },
+        {
+          "name": "shared_experts_down",
+          "op_type": "linear",
+          "linear_type": "RowParallelLinear",
+          "full_weight_shape": [
+            2048,
+            2816
+          ],
+          "tp_weight_shape": [
+            2048,
+            2816
+          ],
+          "partition": {
+            "dim": 0,
+            "strategy": "row_parallel",
+            "details": "Shared experts down: row-parallel."
+          },
+          "comm_after": null,
+          "sub_components": null
+        },
+        {
+          "name": "moe_output_reduce",
+          "op_type": "comm",
+          "linear_type": null,
+          "full_weight_shape": [
+            0,
+            0
+          ],
+          "tp_weight_shape": [
+            0,
+            0
+          ],
+          "partition": null,
+          "comm_after": "all_reduce",
+          "sub_components": null
+        }
+      ]
+    },
+    {
+      "layer_id": 5,
+      "layer_type": "moe",
+      "operators": [
+        {
+          "name": "fused_qkv_a_proj_with_mqa",
+          "op_type": "linear",
+          "linear_type": "ReplicatedLinear",
+          "full_weight_shape": [
+            2112,
+            2048
+          ],
+          "tp_weight_shape": [
+            2112,
+            2048
+          ],
+          "partition": {
+            "dim": -1,
+            "strategy": "replicated",
+            "details": "Replicated: projects to small latent space (q_lora=1536 + kv_lora=512 + rope=64). Not worth sharding."
+          },
+          "comm_after": null,
+          "sub_components": [
+            "q_a_proj",
+            "kv_a_proj_with_mqa"
+          ]
+        },
+        {
+          "name": "q_b_proj",
+          "op_type": "linear",
+          "linear_type": "ColumnParallelLinear",
+          "full_weight_shape": [
+            3072,
+            1536
+          ],
+          "tp_weight_shape": [
+            3072,
+            1536
+          ],
+          "partition": {
+            "dim": 1,
+            "strategy": "column_parallel",
+            "details": "Column-parallel: expands latent q (1536) to 16 heads × 192 dim. Split by heads."
+          },
+          "comm_after": null,
+          "sub_components": null
+        },
+        {
+          "name": "kv_b_proj",
+          "op_type": "linear",
+          "linear_type": "ColumnParallelLinear",
+          "full_weight_shape": [
+            4096,
+            512
+          ],
+          "tp_weight_shape": [
+            4096,
+            512
+          ],
+          "partition": {
+            "dim": 1,
+            "strategy": "column_parallel",
+            "details": "Column-parallel: expands KV latent (512) to 16 heads × (128 + 128) dim."
+          },
+          "comm_after": null,
+          "sub_components": null
+        },
+        {
+          "name": "o_proj",
+          "op_type": "linear",
+          "linear_type": "RowParallelLinear",
+          "full_weight_shape": [
+            2048,
+            2048
+          ],
+          "tp_weight_shape": [
+            2048,
+            2048
+          ],
+          "partition": {
+            "dim": 0,
+            "strategy": "row_parallel",
+            "details": "Row-parallel: input 2048 split by heads across ranks."
+          },
+          "comm_after": "all_reduce",
+          "sub_components": null
+        },
+        {
+          "name": "gate",
+          "op_type": "moe_gate",
+          "linear_type": "ReplicatedLinear",
+          "full_weight_shape": [
+            64,
+            2048
+          ],
+          "tp_weight_shape": [
+            64,
+            2048
+          ],
+          "partition": {
+            "dim": -1,
+            "strategy": "replicated",
+            "details": "Router: 64 experts. Replicated across all ranks."
+          },
+          "comm_after": null,
+          "sub_components": null
+        },
+        {
+          "name": "experts_gate_up",
+          "op_type": "linear",
+          "linear_type": "MergedColumnParallelLinear",
+          "full_weight_shape": [
+            64,
+            2816,
+            2048
+          ],
+          "tp_weight_shape": [
+            64,
+            2816,
+            2048
+          ],
+          "partition": {
+            "dim": 1,
+            "strategy": "column_parallel",
+            "details": "64 experts, each gate+up [2816, 2048]. moe_inter dimension split by tp."
+          },
+          "comm_after": null,
+          "sub_components": [
+            "w1 (gate)",
+            "w3 (up)"
+          ]
+        },
+        {
+          "name": "experts_down",
+          "op_type": "linear",
+          "linear_type": "RowParallelLinear",
+          "full_weight_shape": [
+            64,
+            2048,
+            1408
+          ],
+          "tp_weight_shape": [
+            64,
+            2048,
+            1408
+          ],
+          "partition": {
+            "dim": 0,
+            "strategy": "row_parallel",
+            "details": "64 experts, each down [2048, 1408]. Input dim (moe_inter) split by tp."
+          },
+          "comm_after": null,
+          "sub_components": [
+            "w2 (down)"
+          ]
+        },
+        {
+          "name": "shared_experts_gate_up",
+          "op_type": "linear",
+          "linear_type": "MergedColumnParallelLinear",
+          "full_weight_shape": [
+            5632,
+            2048
+          ],
+          "tp_weight_shape": [
+            5632,
+            2048
+          ],
+          "partition": {
+            "dim": 1,
+            "strategy": "merged_column_parallel",
+            "details": "Shared experts (2): gate+up fused, column-split."
+          },
+          "comm_after": null,
+          "sub_components": [
+            "shared_gate_proj",
+            "shared_up_proj"
+          ]
+        },
+        {
+          "name": "shared_experts_down",
+          "op_type": "linear",
+          "linear_type": "RowParallelLinear",
+          "full_weight_shape": [
+            2048,
+            2816
+          ],
+          "tp_weight_shape": [
+            2048,
+            2816
+          ],
+          "partition": {
+            "dim": 0,
+            "strategy": "row_parallel",
+            "details": "Shared experts down: row-parallel."
+          },
+          "comm_after": null,
+          "sub_components": null
+        },
+        {
+          "name": "moe_output_reduce",
+          "op_type": "comm",
+          "linear_type": null,
+          "full_weight_shape": [
+            0,
+            0
+          ],
+          "tp_weight_shape": [
+            0,
+            0
+          ],
+          "partition": null,
+          "comm_after": "all_reduce",
+          "sub_components": null
+        }
+      ]
+    },
+    {
+      "layer_id": 6,
+      "layer_type": "moe",
+      "operators": [
+        {
+          "name": "fused_qkv_a_proj_with_mqa",
+          "op_type": "linear",
+          "linear_type": "ReplicatedLinear",
+          "full_weight_shape": [
+            2112,
+            2048
+          ],
+          "tp_weight_shape": [
+            2112,
+            2048
+          ],
+          "partition": {
+            "dim": -1,
+            "strategy": "replicated",
+            "details": "Replicated: projects to small latent space (q_lora=1536 + kv_lora=512 + rope=64). Not worth sharding."
+          },
+          "comm_after": null,
+          "sub_components": [
+            "q_a_proj",
+            "kv_a_proj_with_mqa"
+          ]
+        },
+        {
+          "name": "q_b_proj",
+          "op_type": "linear",
+          "linear_type": "ColumnParallelLinear",
+          "full_weight_shape": [
+            3072,
+            1536
+          ],
+          "tp_weight_shape": [
+            3072,
+            1536
+          ],
+          "partition": {
+            "dim": 1,
+            "strategy": "column_parallel",
+            "details": "Column-parallel: expands latent q (1536) to 16 heads × 192 dim. Split by heads."
+          },
+          "comm_after": null,
+          "sub_components": null
+        },
+        {
+          "name": "kv_b_proj",
+          "op_type": "linear",
+          "linear_type": "ColumnParallelLinear",
+          "full_weight_shape": [
+            4096,
+            512
+          ],
+          "tp_weight_shape": [
+            4096,
+            512
+          ],
+          "partition": {
+            "dim": 1,
+            "strategy": "column_parallel",
+            "details": "Column-parallel: expands KV latent (512) to 16 heads × (128 + 128) dim."
+          },
+          "comm_after": null,
+          "sub_components": null
+        },
+        {
+          "name": "o_proj",
+          "op_type": "linear",
+          "linear_type": "RowParallelLinear",
+          "full_weight_shape": [
+            2048,
+            2048
+          ],
+          "tp_weight_shape": [
+            2048,
+            2048
+          ],
+          "partition": {
+            "dim": 0,
+            "strategy": "row_parallel",
+            "details": "Row-parallel: input 2048 split by heads across ranks."
+          },
+          "comm_after": "all_reduce",
+          "sub_components": null
+        },
+        {
+          "name": "gate",
+          "op_type": "moe_gate",
+          "linear_type": "ReplicatedLinear",
+          "full_weight_shape": [
+            64,
+            2048
+          ],
+          "tp_weight_shape": [
+            64,
+            2048
+          ],
+          "partition": {
+            "dim": -1,
+            "strategy": "replicated",
+            "details": "Router: 64 experts. Replicated across all ranks."
+          },
+          "comm_after": null,
+          "sub_components": null
+        },
+        {
+          "name": "experts_gate_up",
+          "op_type": "linear",
+          "linear_type": "MergedColumnParallelLinear",
+          "full_weight_shape": [
+            64,
+            2816,
+            2048
+          ],
+          "tp_weight_shape": [
+            64,
+            2816,
+            2048
+          ],
+          "partition": {
+            "dim": 1,
+            "strategy": "column_parallel",
+            "details": "64 experts, each gate+up [2816, 2048]. moe_inter dimension split by tp."
+          },
+          "comm_after": null,
+          "sub_components": [
+            "w1 (gate)",
+            "w3 (up)"
+          ]
+        },
+        {
+          "name": "experts_down",
+          "op_type": "linear",
+          "linear_type": "RowParallelLinear",
+          "full_weight_shape": [
+            64,
+            2048,
+            1408
+          ],
+          "tp_weight_shape": [
+            64,
+            2048,
+            1408
+          ],
+          "partition": {
+            "dim": 0,
+            "strategy": "row_parallel",
+            "details": "64 experts, each down [2048, 1408]. Input dim (moe_inter) split by tp."
+          },
+          "comm_after": null,
+          "sub_components": [
+            "w2 (down)"
+          ]
+        },
+        {
+          "name": "shared_experts_gate_up",
+          "op_type": "linear",
+          "linear_type": "MergedColumnParallelLinear",
+          "full_weight_shape": [
+            5632,
+            2048
+          ],
+          "tp_weight_shape": [
+            5632,
+            2048
+          ],
+          "partition": {
+            "dim": 1,
+            "strategy": "merged_column_parallel",
+            "details": "Shared experts (2): gate+up fused, column-split."
+          },
+          "comm_after": null,
+          "sub_components": [
+            "shared_gate_proj",
+            "shared_up_proj"
+          ]
+        },
+        {
+          "name": "shared_experts_down",
+          "op_type": "linear",
+          "linear_type": "RowParallelLinear",
+          "full_weight_shape": [
+            2048,
+            2816
+          ],
+          "tp_weight_shape": [
+            2048,
+            2816
+          ],
+          "partition": {
+            "dim": 0,
+            "strategy": "row_parallel",
+            "details": "Shared experts down: row-parallel."
+          },
+          "comm_after": null,
+          "sub_components": null
+        },
+        {
+          "name": "moe_output_reduce",
+          "op_type": "comm",
+          "linear_type": null,
+          "full_weight_shape": [
+            0,
+            0
+          ],
+          "tp_weight_shape": [
+            0,
+            0
+          ],
+          "partition": null,
+          "comm_after": "all_reduce",
+          "sub_components": null
+        }
+      ]
+    },
+    {
+      "layer_id": 7,
+      "layer_type": "moe",
+      "operators": [
+        {
+          "name": "fused_qkv_a_proj_with_mqa",
+          "op_type": "linear",
+          "linear_type": "ReplicatedLinear",
+          "full_weight_shape": [
+            2112,
+            2048
+          ],
+          "tp_weight_shape": [
+            2112,
+            2048
+          ],
+          "partition": {
+            "dim": -1,
+            "strategy": "replicated",
+            "details": "Replicated: projects to small latent space (q_lora=1536 + kv_lora=512 + rope=64). Not worth sharding."
+          },
+          "comm_after": null,
+          "sub_components": [
+            "q_a_proj",
+            "kv_a_proj_with_mqa"
+          ]
+        },
+        {
+          "name": "q_b_proj",
+          "op_type": "linear",
+          "linear_type": "ColumnParallelLinear",
+          "full_weight_shape": [
+            3072,
+            1536
+          ],
+          "tp_weight_shape": [
+            3072,
+            1536
+          ],
+          "partition": {
+            "dim": 1,
+            "strategy": "column_parallel",
+            "details": "Column-parallel: expands latent q (1536) to 16 heads × 192 dim. Split by heads."
+          },
+          "comm_after": null,
+          "sub_components": null
+        },
+        {
+          "name": "kv_b_proj",
+          "op_type": "linear",
+          "linear_type": "ColumnParallelLinear",
+          "full_weight_shape": [
+            4096,
+            512
+          ],
+          "tp_weight_shape": [
+            4096,
+            512
+          ],
+          "partition": {
+            "dim": 1,
+            "strategy": "column_parallel",
+            "details": "Column-parallel: expands KV latent (512) to 16 heads × (128 + 128) dim."
+          },
+          "comm_after": null,
+          "sub_components": null
+        },
+        {
+          "name": "o_proj",
+          "op_type": "linear",
+          "linear_type": "RowParallelLinear",
+          "full_weight_shape": [
+            2048,
+            2048
+          ],
+          "tp_weight_shape": [
+            2048,
+            2048
+          ],
+          "partition": {
+            "dim": 0,
+            "strategy": "row_parallel",
+            "details": "Row-parallel: input 2048 split by heads across ranks."
+          },
+          "comm_after": "all_reduce",
+          "sub_components": null
+        },
+        {
+          "name": "gate",
+          "op_type": "moe_gate",
+          "linear_type": "ReplicatedLinear",
+          "full_weight_shape": [
+            64,
+            2048
+          ],
+          "tp_weight_shape": [
+            64,
+            2048
+          ],
+          "partition": {
+            "dim": -1,
+            "strategy": "replicated",
+            "details": "Router: 64 experts. Replicated across all ranks."
+          },
+          "comm_after": null,
+          "sub_components": null
+        },
+        {
+          "name": "experts_gate_up",
+          "op_type": "linear",
+          "linear_type": "MergedColumnParallelLinear",
+          "full_weight_shape": [
+            64,
+            2816,
+            2048
+          ],
+          "tp_weight_shape": [
+            64,
+            2816,
+            2048
+          ],
+          "partition": {
+            "dim": 1,
+            "strategy": "column_parallel",
+            "details": "64 experts, each gate+up [2816, 2048]. moe_inter dimension split by tp."
+          },
+          "comm_after": null,
+          "sub_components": [
+            "w1 (gate)",
+            "w3 (up)"
+          ]
+        },
+        {
+          "name": "experts_down",
+          "op_type": "linear",
+          "linear_type": "RowParallelLinear",
+          "full_weight_shape": [
+            64,
+            2048,
+            1408
+          ],
+          "tp_weight_shape": [
+            64,
+            2048,
+            1408
+          ],
+          "partition": {
+            "dim": 0,
+            "strategy": "row_parallel",
+            "details": "64 experts, each down [2048, 1408]. Input dim (moe_inter) split by tp."
+          },
+          "comm_after": null,
+          "sub_components": [
+            "w2 (down)"
+          ]
+        },
+        {
+          "name": "shared_experts_gate_up",
+          "op_type": "linear",
+          "linear_type": "MergedColumnParallelLinear",
+          "full_weight_shape": [
+            5632,
+            2048
+          ],
+          "tp_weight_shape": [
+            5632,
+            2048
+          ],
+          "partition": {
+            "dim": 1,
+            "strategy": "merged_column_parallel",
+            "details": "Shared experts (2): gate+up fused, column-split."
+          },
+          "comm_after": null,
+          "sub_components": [
+            "shared_gate_proj",
+            "shared_up_proj"
+          ]
+        },
+        {
+          "name": "shared_experts_down",
+          "op_type": "linear",
+          "linear_type": "RowParallelLinear",
+          "full_weight_shape": [
+            2048,
+            2816
+          ],
+          "tp_weight_shape": [
+            2048,
+            2816
+          ],
+          "partition": {
+            "dim": 0,
+            "strategy": "row_parallel",
+            "details": "Shared experts down: row-parallel."
+          },
+          "comm_after": null,
+          "sub_components": null
+        },
+        {
+          "name": "moe_output_reduce",
+          "op_type": "comm",
+          "linear_type": null,
+          "full_weight_shape": [
+            0,
+            0
+          ],
+          "tp_weight_shape": [
+            0,
+            0
+          ],
+          "partition": null,
+          "comm_after": "all_reduce",
+          "sub_components": null
+        }
+      ]
+    },
+    {
+      "layer_id": 8,
+      "layer_type": "moe",
+      "operators": [
+        {
+          "name": "fused_qkv_a_proj_with_mqa",
+          "op_type": "linear",
+          "linear_type": "ReplicatedLinear",
+          "full_weight_shape": [
+            2112,
+            2048
+          ],
+          "tp_weight_shape": [
+            2112,
+            2048
+          ],
+          "partition": {
+            "dim": -1,
+            "strategy": "replicated",
+            "details": "Replicated: projects to small latent space (q_lora=1536 + kv_lora=512 + rope=64). Not worth sharding."
+          },
+          "comm_after": null,
+          "sub_components": [
+            "q_a_proj",
+            "kv_a_proj_with_mqa"
+          ]
+        },
+        {
+          "name": "q_b_proj",
+          "op_type": "linear",
+          "linear_type": "ColumnParallelLinear",
+          "full_weight_shape": [
+            3072,
+            1536
+          ],
+          "tp_weight_shape": [
+            3072,
+            1536
+          ],
+          "partition": {
+            "dim": 1,
+            "strategy": "column_parallel",
+            "details": "Column-parallel: expands latent q (1536) to 16 heads × 192 dim. Split by heads."
+          },
+          "comm_after": null,
+          "sub_components": null
+        },
+        {
+          "name": "kv_b_proj",
+          "op_type": "linear",
+          "linear_type": "ColumnParallelLinear",
+          "full_weight_shape": [
+            4096,
+            512
+          ],
+          "tp_weight_shape": [
+            4096,
+            512
+          ],
+          "partition": {
+            "dim": 1,
+            "strategy": "column_parallel",
+            "details": "Column-parallel: expands KV latent (512) to 16 heads × (128 + 128) dim."
+          },
+          "comm_after": null,
+          "sub_components": null
+        },
+        {
+          "name": "o_proj",
+          "op_type": "linear",
+          "linear_type": "RowParallelLinear",
+          "full_weight_shape": [
+            2048,
+            2048
+          ],
+          "tp_weight_shape": [
+            2048,
+            2048
+          ],
+          "partition": {
+            "dim": 0,
+            "strategy": "row_parallel",
+            "details": "Row-parallel: input 2048 split by heads across ranks."
+          },
+          "comm_after": "all_reduce",
+          "sub_components": null
+        },
+        {
+          "name": "gate",
+          "op_type": "moe_gate",
+          "linear_type": "ReplicatedLinear",
+          "full_weight_shape": [
+            64,
+            2048
+          ],
+          "tp_weight_shape": [
+            64,
+            2048
+          ],
+          "partition": {
+            "dim": -1,
+            "strategy": "replicated",
+            "details": "Router: 64 experts. Replicated across all ranks."
+          },
+          "comm_after": null,
+          "sub_components": null
+        },
+        {
+          "name": "experts_gate_up",
+          "op_type": "linear",
+          "linear_type": "MergedColumnParallelLinear",
+          "full_weight_shape": [
+            64,
+            2816,
+            2048
+          ],
+          "tp_weight_shape": [
+            64,
+            2816,
+            2048
+          ],
+          "partition": {
+            "dim": 1,
+            "strategy": "column_parallel",
+            "details": "64 experts, each gate+up [2816, 2048]. moe_inter dimension split by tp."
+          },
+          "comm_after": null,
+          "sub_components": [
+            "w1 (gate)",
+            "w3 (up)"
+          ]
+        },
+        {
+          "name": "experts_down",
+          "op_type": "linear",
+          "linear_type": "RowParallelLinear",
+          "full_weight_shape": [
+            64,
+            2048,
+            1408
+          ],
+          "tp_weight_shape": [
+            64,
+            2048,
+            1408
+          ],
+          "partition": {
+            "dim": 0,
+            "strategy": "row_parallel",
+            "details": "64 experts, each down [2048, 1408]. Input dim (moe_inter) split by tp."
+          },
+          "comm_after": null,
+          "sub_components": [
+            "w2 (down)"
+          ]
+        },
+        {
+          "name": "shared_experts_gate_up",
+          "op_type": "linear",
+          "linear_type": "MergedColumnParallelLinear",
+          "full_weight_shape": [
+            5632,
+            2048
+          ],
+          "tp_weight_shape": [
+            5632,
+            2048
+          ],
+          "partition": {
+            "dim": 1,
+            "strategy": "merged_column_parallel",
+            "details": "Shared experts (2): gate+up fused, column-split."
+          },
+          "comm_after": null,
+          "sub_components": [
+            "shared_gate_proj",
+            "shared_up_proj"
+          ]
+        },
+        {
+          "name": "shared_experts_down",
+          "op_type": "linear",
+          "linear_type": "RowParallelLinear",
+          "full_weight_shape": [
+            2048,
+            2816
+          ],
+          "tp_weight_shape": [
+            2048,
+            2816
+          ],
+          "partition": {
+            "dim": 0,
+            "strategy": "row_parallel",
+            "details": "Shared experts down: row-parallel."
+          },
+          "comm_after": null,
+          "sub_components": null
+        },
+        {
+          "name": "moe_output_reduce",
+          "op_type": "comm",
+          "linear_type": null,
+          "full_weight_shape": [
+            0,
+            0
+          ],
+          "tp_weight_shape": [
+            0,
+            0
+          ],
+          "partition": null,
+          "comm_after": "all_reduce",
+          "sub_components": null
+        }
+      ]
+    },
+    {
+      "layer_id": 9,
+      "layer_type": "moe",
+      "operators": [
+        {
+          "name": "fused_qkv_a_proj_with_mqa",
+          "op_type": "linear",
+          "linear_type": "ReplicatedLinear",
+          "full_weight_shape": [
+            2112,
+            2048
+          ],
+          "tp_weight_shape": [
+            2112,
+            2048
+          ],
+          "partition": {
+            "dim": -1,
+            "strategy": "replicated",
+            "details": "Replicated: projects to small latent space (q_lora=1536 + kv_lora=512 + rope=64). Not worth sharding."
+          },
+          "comm_after": null,
+          "sub_components": [
+            "q_a_proj",
+            "kv_a_proj_with_mqa"
+          ]
+        },
+        {
+          "name": "q_b_proj",
+          "op_type": "linear",
+          "linear_type": "ColumnParallelLinear",
+          "full_weight_shape": [
+            3072,
+            1536
+          ],
+          "tp_weight_shape": [
+            3072,
+            1536
+          ],
+          "partition": {
+            "dim": 1,
+            "strategy": "column_parallel",
+            "details": "Column-parallel: expands latent q (1536) to 16 heads × 192 dim. Split by heads."
+          },
+          "comm_after": null,
+          "sub_components": null
+        },
+        {
+          "name": "kv_b_proj",
+          "op_type": "linear",
+          "linear_type": "ColumnParallelLinear",
+          "full_weight_shape": [
+            4096,
+            512
+          ],
+          "tp_weight_shape": [
+            4096,
+            512
+          ],
+          "partition": {
+            "dim": 1,
+            "strategy": "column_parallel",
+            "details": "Column-parallel: expands KV latent (512) to 16 heads × (128 + 128) dim."
+          },
+          "comm_after": null,
+          "sub_components": null
+        },
+        {
+          "name": "o_proj",
+          "op_type": "linear",
+          "linear_type": "RowParallelLinear",
+          "full_weight_shape": [
+            2048,
+            2048
+          ],
+          "tp_weight_shape": [
+            2048,
+            2048
+          ],
+          "partition": {
+            "dim": 0,
+            "strategy": "row_parallel",
+            "details": "Row-parallel: input 2048 split by heads across ranks."
+          },
+          "comm_after": "all_reduce",
+          "sub_components": null
+        },
+        {
+          "name": "gate",
+          "op_type": "moe_gate",
+          "linear_type": "ReplicatedLinear",
+          "full_weight_shape": [
+            64,
+            2048
+          ],
+          "tp_weight_shape": [
+            64,
+            2048
+          ],
+          "partition": {
+            "dim": -1,
+            "strategy": "replicated",
+            "details": "Router: 64 experts. Replicated across all ranks."
+          },
+          "comm_after": null,
+          "sub_components": null
+        },
+        {
+          "name": "experts_gate_up",
+          "op_type": "linear",
+          "linear_type": "MergedColumnParallelLinear",
+          "full_weight_shape": [
+            64,
+            2816,
+            2048
+          ],
+          "tp_weight_shape": [
+            64,
+            2816,
+            2048
+          ],
+          "partition": {
+            "dim": 1,
+            "strategy": "column_parallel",
+            "details": "64 experts, each gate+up [2816, 2048]. moe_inter dimension split by tp."
+          },
+          "comm_after": null,
+          "sub_components": [
+            "w1 (gate)",
+            "w3 (up)"
+          ]
+        },
+        {
+          "name": "experts_down",
+          "op_type": "linear",
+          "linear_type": "RowParallelLinear",
+          "full_weight_shape": [
+            64,
+            2048,
+            1408
+          ],
+          "tp_weight_shape": [
+            64,
+            2048,
+            1408
+          ],
+          "partition": {
+            "dim": 0,
+            "strategy": "row_parallel",
+            "details": "64 experts, each down [2048, 1408]. Input dim (moe_inter) split by tp."
+          },
+          "comm_after": null,
+          "sub_components": [
+            "w2 (down)"
+          ]
+        },
+        {
+          "name": "shared_experts_gate_up",
+          "op_type": "linear",
+          "linear_type": "MergedColumnParallelLinear",
+          "full_weight_shape": [
+            5632,
+            2048
+          ],
+          "tp_weight_shape": [
+            5632,
+            2048
+          ],
+          "partition": {
+            "dim": 1,
+            "strategy": "merged_column_parallel",
+            "details": "Shared experts (2): gate+up fused, column-split."
+          },
+          "comm_after": null,
+          "sub_components": [
+            "shared_gate_proj",
+            "shared_up_proj"
+          ]
+        },
+        {
+          "name": "shared_experts_down",
+          "op_type": "linear",
+          "linear_type": "RowParallelLinear",
+          "full_weight_shape": [
+            2048,
+            2816
+          ],
+          "tp_weight_shape": [
+            2048,
+            2816
+          ],
+          "partition": {
+            "dim": 0,
+            "strategy": "row_parallel",
+            "details": "Shared experts down: row-parallel."
+          },
+          "comm_after": null,
+          "sub_components": null
+        },
+        {
+          "name": "moe_output_reduce",
+          "op_type": "comm",
+          "linear_type": null,
+          "full_weight_shape": [
+            0,
+            0
+          ],
+          "tp_weight_shape": [
+            0,
+            0
+          ],
+          "partition": null,
+          "comm_after": "all_reduce",
+          "sub_components": null
+        }
+      ]
+    },
+    {
+      "layer_id": 10,
+      "layer_type": "moe",
+      "operators": [
+        {
+          "name": "fused_qkv_a_proj_with_mqa",
+          "op_type": "linear",
+          "linear_type": "ReplicatedLinear",
+          "full_weight_shape": [
+            2112,
+            2048
+          ],
+          "tp_weight_shape": [
+            2112,
+            2048
+          ],
+          "partition": {
+            "dim": -1,
+            "strategy": "replicated",
+            "details": "Replicated: projects to small latent space (q_lora=1536 + kv_lora=512 + rope=64). Not worth sharding."
+          },
+          "comm_after": null,
+          "sub_components": [
+            "q_a_proj",
+            "kv_a_proj_with_mqa"
+          ]
+        },
+        {
+          "name": "q_b_proj",
+          "op_type": "linear",
+          "linear_type": "ColumnParallelLinear",
+          "full_weight_shape": [
+            3072,
+            1536
+          ],
+          "tp_weight_shape": [
+            3072,
+            1536
+          ],
+          "partition": {
+            "dim": 1,
+            "strategy": "column_parallel",
+            "details": "Column-parallel: expands latent q (1536) to 16 heads × 192 dim. Split by heads."
+          },
+          "comm_after": null,
+          "sub_components": null
+        },
+        {
+          "name": "kv_b_proj",
+          "op_type": "linear",
+          "linear_type": "ColumnParallelLinear",
+          "full_weight_shape": [
+            4096,
+            512
+          ],
+          "tp_weight_shape": [
+            4096,
+            512
+          ],
+          "partition": {
+            "dim": 1,
+            "strategy": "column_parallel",
+            "details": "Column-parallel: expands KV latent (512) to 16 heads × (128 + 128) dim."
+          },
+          "comm_after": null,
+          "sub_components": null
+        },
+        {
+          "name": "o_proj",
+          "op_type": "linear",
+          "linear_type": "RowParallelLinear",
+          "full_weight_shape": [
+            2048,
+            2048
+          ],
+          "tp_weight_shape": [
+            2048,
+            2048
+          ],
+          "partition": {
+            "dim": 0,
+            "strategy": "row_parallel",
+            "details": "Row-parallel: input 2048 split by heads across ranks."
+          },
+          "comm_after": "all_reduce",
+          "sub_components": null
+        },
+        {
+          "name": "gate",
+          "op_type": "moe_gate",
+          "linear_type": "ReplicatedLinear",
+          "full_weight_shape": [
+            64,
+            2048
+          ],
+          "tp_weight_shape": [
+            64,
+            2048
+          ],
+          "partition": {
+            "dim": -1,
+            "strategy": "replicated",
+            "details": "Router: 64 experts. Replicated across all ranks."
+          },
+          "comm_after": null,
+          "sub_components": null
+        },
+        {
+          "name": "experts_gate_up",
+          "op_type": "linear",
+          "linear_type": "MergedColumnParallelLinear",
+          "full_weight_shape": [
+            64,
+            2816,
+            2048
+          ],
+          "tp_weight_shape": [
+            64,
+            2816,
+            2048
+          ],
+          "partition": {
+            "dim": 1,
+            "strategy": "column_parallel",
+            "details": "64 experts, each gate+up [2816, 2048]. moe_inter dimension split by tp."
+          },
+          "comm_after": null,
+          "sub_components": [
+            "w1 (gate)",
+            "w3 (up)"
+          ]
+        },
+        {
+          "name": "experts_down",
+          "op_type": "linear",
+          "linear_type": "RowParallelLinear",
+          "full_weight_shape": [
+            64,
+            2048,
+            1408
+          ],
+          "tp_weight_shape": [
+            64,
+            2048,
+            1408
+          ],
+          "partition": {
+            "dim": 0,
+            "strategy": "row_parallel",
+            "details": "64 experts, each down [2048, 1408]. Input dim (moe_inter) split by tp."
+          },
+          "comm_after": null,
+          "sub_components": [
+            "w2 (down)"
+          ]
+        },
+        {
+          "name": "shared_experts_gate_up",
+          "op_type": "linear",
+          "linear_type": "MergedColumnParallelLinear",
+          "full_weight_shape": [
+            5632,
+            2048
+          ],
+          "tp_weight_shape": [
+            5632,
+            2048
+          ],
+          "partition": {
+            "dim": 1,
+            "strategy": "merged_column_parallel",
+            "details": "Shared experts (2): gate+up fused, column-split."
+          },
+          "comm_after": null,
+          "sub_components": [
+            "shared_gate_proj",
+            "shared_up_proj"
+          ]
+        },
+        {
+          "name": "shared_experts_down",
+          "op_type": "linear",
+          "linear_type": "RowParallelLinear",
+          "full_weight_shape": [
+            2048,
+            2816
+          ],
+          "tp_weight_shape": [
+            2048,
+            2816
+          ],
+          "partition": {
+            "dim": 0,
+            "strategy": "row_parallel",
+            "details": "Shared experts down: row-parallel."
+          },
+          "comm_after": null,
+          "sub_components": null
+        },
+        {
+          "name": "moe_output_reduce",
+          "op_type": "comm",
+          "linear_type": null,
+          "full_weight_shape": [
+            0,
+            0
+          ],
+          "tp_weight_shape": [
+            0,
+            0
+          ],
+          "partition": null,
+          "comm_after": "all_reduce",
+          "sub_components": null
+        }
+      ]
+    },
+    {
+      "layer_id": 11,
+      "layer_type": "moe",
+      "operators": [
+        {
+          "name": "fused_qkv_a_proj_with_mqa",
+          "op_type": "linear",
+          "linear_type": "ReplicatedLinear",
+          "full_weight_shape": [
+            2112,
+            2048
+          ],
+          "tp_weight_shape": [
+            2112,
+            2048
+          ],
+          "partition": {
+            "dim": -1,
+            "strategy": "replicated",
+            "details": "Replicated: projects to small latent space (q_lora=1536 + kv_lora=512 + rope=64). Not worth sharding."
+          },
+          "comm_after": null,
+          "sub_components": [
+            "q_a_proj",
+            "kv_a_proj_with_mqa"
+          ]
+        },
+        {
+          "name": "q_b_proj",
+          "op_type": "linear",
+          "linear_type": "ColumnParallelLinear",
+          "full_weight_shape": [
+            3072,
+            1536
+          ],
+          "tp_weight_shape": [
+            3072,
+            1536
+          ],
+          "partition": {
+            "dim": 1,
+            "strategy": "column_parallel",
+            "details": "Column-parallel: expands latent q (1536) to 16 heads × 192 dim. Split by heads."
+          },
+          "comm_after": null,
+          "sub_components": null
+        },
+        {
+          "name": "kv_b_proj",
+          "op_type": "linear",
+          "linear_type": "ColumnParallelLinear",
+          "full_weight_shape": [
+            4096,
+            512
+          ],
+          "tp_weight_shape": [
+            4096,
+            512
+          ],
+          "partition": {
+            "dim": 1,
+            "strategy": "column_parallel",
+            "details": "Column-parallel: expands KV latent (512) to 16 heads × (128 + 128) dim."
+          },
+          "comm_after": null,
+          "sub_components": null
+        },
+        {
+          "name": "o_proj",
+          "op_type": "linear",
+          "linear_type": "RowParallelLinear",
+          "full_weight_shape": [
+            2048,
+            2048
+          ],
+          "tp_weight_shape": [
+            2048,
+            2048
+          ],
+          "partition": {
+            "dim": 0,
+            "strategy": "row_parallel",
+            "details": "Row-parallel: input 2048 split by heads across ranks."
+          },
+          "comm_after": "all_reduce",
+          "sub_components": null
+        },
+        {
+          "name": "gate",
+          "op_type": "moe_gate",
+          "linear_type": "ReplicatedLinear",
+          "full_weight_shape": [
+            64,
+            2048
+          ],
+          "tp_weight_shape": [
+            64,
+            2048
+          ],
+          "partition": {
+            "dim": -1,
+            "strategy": "replicated",
+            "details": "Router: 64 experts. Replicated across all ranks."
+          },
+          "comm_after": null,
+          "sub_components": null
+        },
+        {
+          "name": "experts_gate_up",
+          "op_type": "linear",
+          "linear_type": "MergedColumnParallelLinear",
+          "full_weight_shape": [
+            64,
+            2816,
+            2048
+          ],
+          "tp_weight_shape": [
+            64,
+            2816,
+            2048
+          ],
+          "partition": {
+            "dim": 1,
+            "strategy": "column_parallel",
+            "details": "64 experts, each gate+up [2816, 2048]. moe_inter dimension split by tp."
+          },
+          "comm_after": null,
+          "sub_components": [
+            "w1 (gate)",
+            "w3 (up)"
+          ]
+        },
+        {
+          "name": "experts_down",
+          "op_type": "linear",
+          "linear_type": "RowParallelLinear",
+          "full_weight_shape": [
+            64,
+            2048,
+            1408
+          ],
+          "tp_weight_shape": [
+            64,
+            2048,
+            1408
+          ],
+          "partition": {
+            "dim": 0,
+            "strategy": "row_parallel",
+            "details": "64 experts, each down [2048, 1408]. Input dim (moe_inter) split by tp."
+          },
+          "comm_after": null,
+          "sub_components": [
+            "w2 (down)"
+          ]
+        },
+        {
+          "name": "shared_experts_gate_up",
+          "op_type": "linear",
+          "linear_type": "MergedColumnParallelLinear",
+          "full_weight_shape": [
+            5632,
+            2048
+          ],
+          "tp_weight_shape": [
+            5632,
+            2048
+          ],
+          "partition": {
+            "dim": 1,
+            "strategy": "merged_column_parallel",
+            "details": "Shared experts (2): gate+up fused, column-split."
+          },
+          "comm_after": null,
+          "sub_components": [
+            "shared_gate_proj",
+            "shared_up_proj"
+          ]
+        },
+        {
+          "name": "shared_experts_down",
+          "op_type": "linear",
+          "linear_type": "RowParallelLinear",
+          "full_weight_shape": [
+            2048,
+            2816
+          ],
+          "tp_weight_shape": [
+            2048,
+            2816
+          ],
+          "partition": {
+            "dim": 0,
+            "strategy": "row_parallel",
+            "details": "Shared experts down: row-parallel."
+          },
+          "comm_after": null,
+          "sub_components": null
+        },
+        {
+          "name": "moe_output_reduce",
+          "op_type": "comm",
+          "linear_type": null,
+          "full_weight_shape": [
+            0,
+            0
+          ],
+          "tp_weight_shape": [
+            0,
+            0
+          ],
+          "partition": null,
+          "comm_after": "all_reduce",
+          "sub_components": null
+        }
+      ]
+    },
+    {
+      "layer_id": 12,
+      "layer_type": "moe",
+      "operators": [
+        {
+          "name": "fused_qkv_a_proj_with_mqa",
+          "op_type": "linear",
+          "linear_type": "ReplicatedLinear",
+          "full_weight_shape": [
+            2112,
+            2048
+          ],
+          "tp_weight_shape": [
+            2112,
+            2048
+          ],
+          "partition": {
+            "dim": -1,
+            "strategy": "replicated",
+            "details": "Replicated: projects to small latent space (q_lora=1536 + kv_lora=512 + rope=64). Not worth sharding."
+          },
+          "comm_after": null,
+          "sub_components": [
+            "q_a_proj",
+            "kv_a_proj_with_mqa"
+          ]
+        },
+        {
+          "name": "q_b_proj",
+          "op_type": "linear",
+          "linear_type": "ColumnParallelLinear",
+          "full_weight_shape": [
+            3072,
+            1536
+          ],
+          "tp_weight_shape": [
+            3072,
+            1536
+          ],
+          "partition": {
+            "dim": 1,
+            "strategy": "column_parallel",
+            "details": "Column-parallel: expands latent q (1536) to 16 heads × 192 dim. Split by heads."
+          },
+          "comm_after": null,
+          "sub_components": null
+        },
+        {
+          "name": "kv_b_proj",
+          "op_type": "linear",
+          "linear_type": "ColumnParallelLinear",
+          "full_weight_shape": [
+            4096,
+            512
+          ],
+          "tp_weight_shape": [
+            4096,
+            512
+          ],
+          "partition": {
+            "dim": 1,
+            "strategy": "column_parallel",
+            "details": "Column-parallel: expands KV latent (512) to 16 heads × (128 + 128) dim."
+          },
+          "comm_after": null,
+          "sub_components": null
+        },
+        {
+          "name": "o_proj",
+          "op_type": "linear",
+          "linear_type": "RowParallelLinear",
+          "full_weight_shape": [
+            2048,
+            2048
+          ],
+          "tp_weight_shape": [
+            2048,
+            2048
+          ],
+          "partition": {
+            "dim": 0,
+            "strategy": "row_parallel",
+            "details": "Row-parallel: input 2048 split by heads across ranks."
+          },
+          "comm_after": "all_reduce",
+          "sub_components": null
+        },
+        {
+          "name": "gate",
+          "op_type": "moe_gate",
+          "linear_type": "ReplicatedLinear",
+          "full_weight_shape": [
+            64,
+            2048
+          ],
+          "tp_weight_shape": [
+            64,
+            2048
+          ],
+          "partition": {
+            "dim": -1,
+            "strategy": "replicated",
+            "details": "Router: 64 experts. Replicated across all ranks."
+          },
+          "comm_after": null,
+          "sub_components": null
+        },
+        {
+          "name": "experts_gate_up",
+          "op_type": "linear",
+          "linear_type": "MergedColumnParallelLinear",
+          "full_weight_shape": [
+            64,
+            2816,
+            2048
+          ],
+          "tp_weight_shape": [
+            64,
+            2816,
+            2048
+          ],
+          "partition": {
+            "dim": 1,
+            "strategy": "column_parallel",
+            "details": "64 experts, each gate+up [2816, 2048]. moe_inter dimension split by tp."
+          },
+          "comm_after": null,
+          "sub_components": [
+            "w1 (gate)",
+            "w3 (up)"
+          ]
+        },
+        {
+          "name": "experts_down",
+          "op_type": "linear",
+          "linear_type": "RowParallelLinear",
+          "full_weight_shape": [
+            64,
+            2048,
+            1408
+          ],
+          "tp_weight_shape": [
+            64,
+            2048,
+            1408
+          ],
+          "partition": {
+            "dim": 0,
+            "strategy": "row_parallel",
+            "details": "64 experts, each down [2048, 1408]. Input dim (moe_inter) split by tp."
+          },
+          "comm_after": null,
+          "sub_components": [
+            "w2 (down)"
+          ]
+        },
+        {
+          "name": "shared_experts_gate_up",
+          "op_type": "linear",
+          "linear_type": "MergedColumnParallelLinear",
+          "full_weight_shape": [
+            5632,
+            2048
+          ],
+          "tp_weight_shape": [
+            5632,
+            2048
+          ],
+          "partition": {
+            "dim": 1,
+            "strategy": "merged_column_parallel",
+            "details": "Shared experts (2): gate+up fused, column-split."
+          },
+          "comm_after": null,
+          "sub_components": [
+            "shared_gate_proj",
+            "shared_up_proj"
+          ]
+        },
+        {
+          "name": "shared_experts_down",
+          "op_type": "linear",
+          "linear_type": "RowParallelLinear",
+          "full_weight_shape": [
+            2048,
+            2816
+          ],
+          "tp_weight_shape": [
+            2048,
+            2816
+          ],
+          "partition": {
+            "dim": 0,
+            "strategy": "row_parallel",
+            "details": "Shared experts down: row-parallel."
+          },
+          "comm_after": null,
+          "sub_components": null
+        },
+        {
+          "name": "moe_output_reduce",
+          "op_type": "comm",
+          "linear_type": null,
+          "full_weight_shape": [
+            0,
+            0
+          ],
+          "tp_weight_shape": [
+            0,
+            0
+          ],
+          "partition": null,
+          "comm_after": "all_reduce",
+          "sub_components": null
+        }
+      ]
+    },
+    {
+      "layer_id": 13,
+      "layer_type": "moe",
+      "operators": [
+        {
+          "name": "fused_qkv_a_proj_with_mqa",
+          "op_type": "linear",
+          "linear_type": "ReplicatedLinear",
+          "full_weight_shape": [
+            2112,
+            2048
+          ],
+          "tp_weight_shape": [
+            2112,
+            2048
+          ],
+          "partition": {
+            "dim": -1,
+            "strategy": "replicated",
+            "details": "Replicated: projects to small latent space (q_lora=1536 + kv_lora=512 + rope=64). Not worth sharding."
+          },
+          "comm_after": null,
+          "sub_components": [
+            "q_a_proj",
+            "kv_a_proj_with_mqa"
+          ]
+        },
+        {
+          "name": "q_b_proj",
+          "op_type": "linear",
+          "linear_type": "ColumnParallelLinear",
+          "full_weight_shape": [
+            3072,
+            1536
+          ],
+          "tp_weight_shape": [
+            3072,
+            1536
+          ],
+          "partition": {
+            "dim": 1,
+            "strategy": "column_parallel",
+            "details": "Column-parallel: expands latent q (1536) to 16 heads × 192 dim. Split by heads."
+          },
+          "comm_after": null,
+          "sub_components": null
+        },
+        {
+          "name": "kv_b_proj",
+          "op_type": "linear",
+          "linear_type": "ColumnParallelLinear",
+          "full_weight_shape": [
+            4096,
+            512
+          ],
+          "tp_weight_shape": [
+            4096,
+            512
+          ],
+          "partition": {
+            "dim": 1,
+            "strategy": "column_parallel",
+            "details": "Column-parallel: expands KV latent (512) to 16 heads × (128 + 128) dim."
+          },
+          "comm_after": null,
+          "sub_components": null
+        },
+        {
+          "name": "o_proj",
+          "op_type": "linear",
+          "linear_type": "RowParallelLinear",
+          "full_weight_shape": [
+            2048,
+            2048
+          ],
+          "tp_weight_shape": [
+            2048,
+            2048
+          ],
+          "partition": {
+            "dim": 0,
+            "strategy": "row_parallel",
+            "details": "Row-parallel: input 2048 split by heads across ranks."
+          },
+          "comm_after": "all_reduce",
+          "sub_components": null
+        },
+        {
+          "name": "gate",
+          "op_type": "moe_gate",
+          "linear_type": "ReplicatedLinear",
+          "full_weight_shape": [
+            64,
+            2048
+          ],
+          "tp_weight_shape": [
+            64,
+            2048
+          ],
+          "partition": {
+            "dim": -1,
+            "strategy": "replicated",
+            "details": "Router: 64 experts. Replicated across all ranks."
+          },
+          "comm_after": null,
+          "sub_components": null
+        },
+        {
+          "name": "experts_gate_up",
+          "op_type": "linear",
+          "linear_type": "MergedColumnParallelLinear",
+          "full_weight_shape": [
+            64,
+            2816,
+            2048
+          ],
+          "tp_weight_shape": [
+            64,
+            2816,
+            2048
+          ],
+          "partition": {
+            "dim": 1,
+            "strategy": "column_parallel",
+            "details": "64 experts, each gate+up [2816, 2048]. moe_inter dimension split by tp."
+          },
+          "comm_after": null,
+          "sub_components": [
+            "w1 (gate)",
+            "w3 (up)"
+          ]
+        },
+        {
+          "name": "experts_down",
+          "op_type": "linear",
+          "linear_type": "RowParallelLinear",
+          "full_weight_shape": [
+            64,
+            2048,
+            1408
+          ],
+          "tp_weight_shape": [
+            64,
+            2048,
+            1408
+          ],
+          "partition": {
+            "dim": 0,
+            "strategy": "row_parallel",
+            "details": "64 experts, each down [2048, 1408]. Input dim (moe_inter) split by tp."
+          },
+          "comm_after": null,
+          "sub_components": [
+            "w2 (down)"
+          ]
+        },
+        {
+          "name": "shared_experts_gate_up",
+          "op_type": "linear",
+          "linear_type": "MergedColumnParallelLinear",
+          "full_weight_shape": [
+            5632,
+            2048
+          ],
+          "tp_weight_shape": [
+            5632,
+            2048
+          ],
+          "partition": {
+            "dim": 1,
+            "strategy": "merged_column_parallel",
+            "details": "Shared experts (2): gate+up fused, column-split."
+          },
+          "comm_after": null,
+          "sub_components": [
+            "shared_gate_proj",
+            "shared_up_proj"
+          ]
+        },
+        {
+          "name": "shared_experts_down",
+          "op_type": "linear",
+          "linear_type": "RowParallelLinear",
+          "full_weight_shape": [
+            2048,
+            2816
+          ],
+          "tp_weight_shape": [
+            2048,
+            2816
+          ],
+          "partition": {
+            "dim": 0,
+            "strategy": "row_parallel",
+            "details": "Shared experts down: row-parallel."
+          },
+          "comm_after": null,
+          "sub_components": null
+        },
+        {
+          "name": "moe_output_reduce",
+          "op_type": "comm",
+          "linear_type": null,
+          "full_weight_shape": [
+            0,
+            0
+          ],
+          "tp_weight_shape": [
+            0,
+            0
+          ],
+          "partition": null,
+          "comm_after": "all_reduce",
+          "sub_components": null
+        }
+      ]
+    },
+    {
+      "layer_id": 14,
+      "layer_type": "moe",
+      "operators": [
+        {
+          "name": "fused_qkv_a_proj_with_mqa",
+          "op_type": "linear",
+          "linear_type": "ReplicatedLinear",
+          "full_weight_shape": [
+            2112,
+            2048
+          ],
+          "tp_weight_shape": [
+            2112,
+            2048
+          ],
+          "partition": {
+            "dim": -1,
+            "strategy": "replicated",
+            "details": "Replicated: projects to small latent space (q_lora=1536 + kv_lora=512 + rope=64). Not worth sharding."
+          },
+          "comm_after": null,
+          "sub_components": [
+            "q_a_proj",
+            "kv_a_proj_with_mqa"
+          ]
+        },
+        {
+          "name": "q_b_proj",
+          "op_type": "linear",
+          "linear_type": "ColumnParallelLinear",
+          "full_weight_shape": [
+            3072,
+            1536
+          ],
+          "tp_weight_shape": [
+            3072,
+            1536
+          ],
+          "partition": {
+            "dim": 1,
+            "strategy": "column_parallel",
+            "details": "Column-parallel: expands latent q (1536) to 16 heads × 192 dim. Split by heads."
+          },
+          "comm_after": null,
+          "sub_components": null
+        },
+        {
+          "name": "kv_b_proj",
+          "op_type": "linear",
+          "linear_type": "ColumnParallelLinear",
+          "full_weight_shape": [
+            4096,
+            512
+          ],
+          "tp_weight_shape": [
+            4096,
+            512
+          ],
+          "partition": {
+            "dim": 1,
+            "strategy": "column_parallel",
+            "details": "Column-parallel: expands KV latent (512) to 16 heads × (128 + 128) dim."
+          },
+          "comm_after": null,
+          "sub_components": null
+        },
+        {
+          "name": "o_proj",
+          "op_type": "linear",
+          "linear_type": "RowParallelLinear",
+          "full_weight_shape": [
+            2048,
+            2048
+          ],
+          "tp_weight_shape": [
+            2048,
+            2048
+          ],
+          "partition": {
+            "dim": 0,
+            "strategy": "row_parallel",
+            "details": "Row-parallel: input 2048 split by heads across ranks."
+          },
+          "comm_after": "all_reduce",
+          "sub_components": null
+        },
+        {
+          "name": "gate",
+          "op_type": "moe_gate",
+          "linear_type": "ReplicatedLinear",
+          "full_weight_shape": [
+            64,
+            2048
+          ],
+          "tp_weight_shape": [
+            64,
+            2048
+          ],
+          "partition": {
+            "dim": -1,
+            "strategy": "replicated",
+            "details": "Router: 64 experts. Replicated across all ranks."
+          },
+          "comm_after": null,
+          "sub_components": null
+        },
+        {
+          "name": "experts_gate_up",
+          "op_type": "linear",
+          "linear_type": "MergedColumnParallelLinear",
+          "full_weight_shape": [
+            64,
+            2816,
+            2048
+          ],
+          "tp_weight_shape": [
+            64,
+            2816,
+            2048
+          ],
+          "partition": {
+            "dim": 1,
+            "strategy": "column_parallel",
+            "details": "64 experts, each gate+up [2816, 2048]. moe_inter dimension split by tp."
+          },
+          "comm_after": null,
+          "sub_components": [
+            "w1 (gate)",
+            "w3 (up)"
+          ]
+        },
+        {
+          "name": "experts_down",
+          "op_type": "linear",
+          "linear_type": "RowParallelLinear",
+          "full_weight_shape": [
+            64,
+            2048,
+            1408
+          ],
+          "tp_weight_shape": [
+            64,
+            2048,
+            1408
+          ],
+          "partition": {
+            "dim": 0,
+            "strategy": "row_parallel",
+            "details": "64 experts, each down [2048, 1408]. Input dim (moe_inter) split by tp."
+          },
+          "comm_after": null,
+          "sub_components": [
+            "w2 (down)"
+          ]
+        },
+        {
+          "name": "shared_experts_gate_up",
+          "op_type": "linear",
+          "linear_type": "MergedColumnParallelLinear",
+          "full_weight_shape": [
+            5632,
+            2048
+          ],
+          "tp_weight_shape": [
+            5632,
+            2048
+          ],
+          "partition": {
+            "dim": 1,
+            "strategy": "merged_column_parallel",
+            "details": "Shared experts (2): gate+up fused, column-split."
+          },
+          "comm_after": null,
+          "sub_components": [
+            "shared_gate_proj",
+            "shared_up_proj"
+          ]
+        },
+        {
+          "name": "shared_experts_down",
+          "op_type": "linear",
+          "linear_type": "RowParallelLinear",
+          "full_weight_shape": [
+            2048,
+            2816
+          ],
+          "tp_weight_shape": [
+            2048,
+            2816
+          ],
+          "partition": {
+            "dim": 0,
+            "strategy": "row_parallel",
+            "details": "Shared experts down: row-parallel."
+          },
+          "comm_after": null,
+          "sub_components": null
+        },
+        {
+          "name": "moe_output_reduce",
+          "op_type": "comm",
+          "linear_type": null,
+          "full_weight_shape": [
+            0,
+            0
+          ],
+          "tp_weight_shape": [
+            0,
+            0
+          ],
+          "partition": null,
+          "comm_after": "all_reduce",
+          "sub_components": null
+        }
+      ]
+    },
+    {
+      "layer_id": 15,
+      "layer_type": "moe",
+      "operators": [
+        {
+          "name": "fused_qkv_a_proj_with_mqa",
+          "op_type": "linear",
+          "linear_type": "ReplicatedLinear",
+          "full_weight_shape": [
+            2112,
+            2048
+          ],
+          "tp_weight_shape": [
+            2112,
+            2048
+          ],
+          "partition": {
+            "dim": -1,
+            "strategy": "replicated",
+            "details": "Replicated: projects to small latent space (q_lora=1536 + kv_lora=512 + rope=64). Not worth sharding."
+          },
+          "comm_after": null,
+          "sub_components": [
+            "q_a_proj",
+            "kv_a_proj_with_mqa"
+          ]
+        },
+        {
+          "name": "q_b_proj",
+          "op_type": "linear",
+          "linear_type": "ColumnParallelLinear",
+          "full_weight_shape": [
+            3072,
+            1536
+          ],
+          "tp_weight_shape": [
+            3072,
+            1536
+          ],
+          "partition": {
+            "dim": 1,
+            "strategy": "column_parallel",
+            "details": "Column-parallel: expands latent q (1536) to 16 heads × 192 dim. Split by heads."
+          },
+          "comm_after": null,
+          "sub_components": null
+        },
+        {
+          "name": "kv_b_proj",
+          "op_type": "linear",
+          "linear_type": "ColumnParallelLinear",
+          "full_weight_shape": [
+            4096,
+            512
+          ],
+          "tp_weight_shape": [
+            4096,
+            512
+          ],
+          "partition": {
+            "dim": 1,
+            "strategy": "column_parallel",
+            "details": "Column-parallel: expands KV latent (512) to 16 heads × (128 + 128) dim."
+          },
+          "comm_after": null,
+          "sub_components": null
+        },
+        {
+          "name": "o_proj",
+          "op_type": "linear",
+          "linear_type": "RowParallelLinear",
+          "full_weight_shape": [
+            2048,
+            2048
+          ],
+          "tp_weight_shape": [
+            2048,
+            2048
+          ],
+          "partition": {
+            "dim": 0,
+            "strategy": "row_parallel",
+            "details": "Row-parallel: input 2048 split by heads across ranks."
+          },
+          "comm_after": "all_reduce",
+          "sub_components": null
+        },
+        {
+          "name": "gate",
+          "op_type": "moe_gate",
+          "linear_type": "ReplicatedLinear",
+          "full_weight_shape": [
+            64,
+            2048
+          ],
+          "tp_weight_shape": [
+            64,
+            2048
+          ],
+          "partition": {
+            "dim": -1,
+            "strategy": "replicated",
+            "details": "Router: 64 experts. Replicated across all ranks."
+          },
+          "comm_after": null,
+          "sub_components": null
+        },
+        {
+          "name": "experts_gate_up",
+          "op_type": "linear",
+          "linear_type": "MergedColumnParallelLinear",
+          "full_weight_shape": [
+            64,
+            2816,
+            2048
+          ],
+          "tp_weight_shape": [
+            64,
+            2816,
+            2048
+          ],
+          "partition": {
+            "dim": 1,
+            "strategy": "column_parallel",
+            "details": "64 experts, each gate+up [2816, 2048]. moe_inter dimension split by tp."
+          },
+          "comm_after": null,
+          "sub_components": [
+            "w1 (gate)",
+            "w3 (up)"
+          ]
+        },
+        {
+          "name": "experts_down",
+          "op_type": "linear",
+          "linear_type": "RowParallelLinear",
+          "full_weight_shape": [
+            64,
+            2048,
+            1408
+          ],
+          "tp_weight_shape": [
+            64,
+            2048,
+            1408
+          ],
+          "partition": {
+            "dim": 0,
+            "strategy": "row_parallel",
+            "details": "64 experts, each down [2048, 1408]. Input dim (moe_inter) split by tp."
+          },
+          "comm_after": null,
+          "sub_components": [
+            "w2 (down)"
+          ]
+        },
+        {
+          "name": "shared_experts_gate_up",
+          "op_type": "linear",
+          "linear_type": "MergedColumnParallelLinear",
+          "full_weight_shape": [
+            5632,
+            2048
+          ],
+          "tp_weight_shape": [
+            5632,
+            2048
+          ],
+          "partition": {
+            "dim": 1,
+            "strategy": "merged_column_parallel",
+            "details": "Shared experts (2): gate+up fused, column-split."
+          },
+          "comm_after": null,
+          "sub_components": [
+            "shared_gate_proj",
+            "shared_up_proj"
+          ]
+        },
+        {
+          "name": "shared_experts_down",
+          "op_type": "linear",
+          "linear_type": "RowParallelLinear",
+          "full_weight_shape": [
+            2048,
+            2816
+          ],
+          "tp_weight_shape": [
+            2048,
+            2816
+          ],
+          "partition": {
+            "dim": 0,
+            "strategy": "row_parallel",
+            "details": "Shared experts down: row-parallel."
+          },
+          "comm_after": null,
+          "sub_components": null
+        },
+        {
+          "name": "moe_output_reduce",
+          "op_type": "comm",
+          "linear_type": null,
+          "full_weight_shape": [
+            0,
+            0
+          ],
+          "tp_weight_shape": [
+            0,
+            0
+          ],
+          "partition": null,
+          "comm_after": "all_reduce",
+          "sub_components": null
+        }
+      ]
+    },
+    {
+      "layer_id": 16,
+      "layer_type": "moe",
+      "operators": [
+        {
+          "name": "fused_qkv_a_proj_with_mqa",
+          "op_type": "linear",
+          "linear_type": "ReplicatedLinear",
+          "full_weight_shape": [
+            2112,
+            2048
+          ],
+          "tp_weight_shape": [
+            2112,
+            2048
+          ],
+          "partition": {
+            "dim": -1,
+            "strategy": "replicated",
+            "details": "Replicated: projects to small latent space (q_lora=1536 + kv_lora=512 + rope=64). Not worth sharding."
+          },
+          "comm_after": null,
+          "sub_components": [
+            "q_a_proj",
+            "kv_a_proj_with_mqa"
+          ]
+        },
+        {
+          "name": "q_b_proj",
+          "op_type": "linear",
+          "linear_type": "ColumnParallelLinear",
+          "full_weight_shape": [
+            3072,
+            1536
+          ],
+          "tp_weight_shape": [
+            3072,
+            1536
+          ],
+          "partition": {
+            "dim": 1,
+            "strategy": "column_parallel",
+            "details": "Column-parallel: expands latent q (1536) to 16 heads × 192 dim. Split by heads."
+          },
+          "comm_after": null,
+          "sub_components": null
+        },
+        {
+          "name": "kv_b_proj",
+          "op_type": "linear",
+          "linear_type": "ColumnParallelLinear",
+          "full_weight_shape": [
+            4096,
+            512
+          ],
+          "tp_weight_shape": [
+            4096,
+            512
+          ],
+          "partition": {
+            "dim": 1,
+            "strategy": "column_parallel",
+            "details": "Column-parallel: expands KV latent (512) to 16 heads × (128 + 128) dim."
+          },
+          "comm_after": null,
+          "sub_components": null
+        },
+        {
+          "name": "o_proj",
+          "op_type": "linear",
+          "linear_type": "RowParallelLinear",
+          "full_weight_shape": [
+            2048,
+            2048
+          ],
+          "tp_weight_shape": [
+            2048,
+            2048
+          ],
+          "partition": {
+            "dim": 0,
+            "strategy": "row_parallel",
+            "details": "Row-parallel: input 2048 split by heads across ranks."
+          },
+          "comm_after": "all_reduce",
+          "sub_components": null
+        },
+        {
+          "name": "gate",
+          "op_type": "moe_gate",
+          "linear_type": "ReplicatedLinear",
+          "full_weight_shape": [
+            64,
+            2048
+          ],
+          "tp_weight_shape": [
+            64,
+            2048
+          ],
+          "partition": {
+            "dim": -1,
+            "strategy": "replicated",
+            "details": "Router: 64 experts. Replicated across all ranks."
+          },
+          "comm_after": null,
+          "sub_components": null
+        },
+        {
+          "name": "experts_gate_up",
+          "op_type": "linear",
+          "linear_type": "MergedColumnParallelLinear",
+          "full_weight_shape": [
+            64,
+            2816,
+            2048
+          ],
+          "tp_weight_shape": [
+            64,
+            2816,
+            2048
+          ],
+          "partition": {
+            "dim": 1,
+            "strategy": "column_parallel",
+            "details": "64 experts, each gate+up [2816, 2048]. moe_inter dimension split by tp."
+          },
+          "comm_after": null,
+          "sub_components": [
+            "w1 (gate)",
+            "w3 (up)"
+          ]
+        },
+        {
+          "name": "experts_down",
+          "op_type": "linear",
+          "linear_type": "RowParallelLinear",
+          "full_weight_shape": [
+            64,
+            2048,
+            1408
+          ],
+          "tp_weight_shape": [
+            64,
+            2048,
+            1408
+          ],
+          "partition": {
+            "dim": 0,
+            "strategy": "row_parallel",
+            "details": "64 experts, each down [2048, 1408]. Input dim (moe_inter) split by tp."
+          },
+          "comm_after": null,
+          "sub_components": [
+            "w2 (down)"
+          ]
+        },
+        {
+          "name": "shared_experts_gate_up",
+          "op_type": "linear",
+          "linear_type": "MergedColumnParallelLinear",
+          "full_weight_shape": [
+            5632,
+            2048
+          ],
+          "tp_weight_shape": [
+            5632,
+            2048
+          ],
+          "partition": {
+            "dim": 1,
+            "strategy": "merged_column_parallel",
+            "details": "Shared experts (2): gate+up fused, column-split."
+          },
+          "comm_after": null,
+          "sub_components": [
+            "shared_gate_proj",
+            "shared_up_proj"
+          ]
+        },
+        {
+          "name": "shared_experts_down",
+          "op_type": "linear",
+          "linear_type": "RowParallelLinear",
+          "full_weight_shape": [
+            2048,
+            2816
+          ],
+          "tp_weight_shape": [
+            2048,
+            2816
+          ],
+          "partition": {
+            "dim": 0,
+            "strategy": "row_parallel",
+            "details": "Shared experts down: row-parallel."
+          },
+          "comm_after": null,
+          "sub_components": null
+        },
+        {
+          "name": "moe_output_reduce",
+          "op_type": "comm",
+          "linear_type": null,
+          "full_weight_shape": [
+            0,
+            0
+          ],
+          "tp_weight_shape": [
+            0,
+            0
+          ],
+          "partition": null,
+          "comm_after": "all_reduce",
+          "sub_components": null
+        }
+      ]
+    },
+    {
+      "layer_id": 17,
+      "layer_type": "moe",
+      "operators": [
+        {
+          "name": "fused_qkv_a_proj_with_mqa",
+          "op_type": "linear",
+          "linear_type": "ReplicatedLinear",
+          "full_weight_shape": [
+            2112,
+            2048
+          ],
+          "tp_weight_shape": [
+            2112,
+            2048
+          ],
+          "partition": {
+            "dim": -1,
+            "strategy": "replicated",
+            "details": "Replicated: projects to small latent space (q_lora=1536 + kv_lora=512 + rope=64). Not worth sharding."
+          },
+          "comm_after": null,
+          "sub_components": [
+            "q_a_proj",
+            "kv_a_proj_with_mqa"
+          ]
+        },
+        {
+          "name": "q_b_proj",
+          "op_type": "linear",
+          "linear_type": "ColumnParallelLinear",
+          "full_weight_shape": [
+            3072,
+            1536
+          ],
+          "tp_weight_shape": [
+            3072,
+            1536
+          ],
+          "partition": {
+            "dim": 1,
+            "strategy": "column_parallel",
+            "details": "Column-parallel: expands latent q (1536) to 16 heads × 192 dim. Split by heads."
+          },
+          "comm_after": null,
+          "sub_components": null
+        },
+        {
+          "name": "kv_b_proj",
+          "op_type": "linear",
+          "linear_type": "ColumnParallelLinear",
+          "full_weight_shape": [
+            4096,
+            512
+          ],
+          "tp_weight_shape": [
+            4096,
+            512
+          ],
+          "partition": {
+            "dim": 1,
+            "strategy": "column_parallel",
+            "details": "Column-parallel: expands KV latent (512) to 16 heads × (128 + 128) dim."
+          },
+          "comm_after": null,
+          "sub_components": null
+        },
+        {
+          "name": "o_proj",
+          "op_type": "linear",
+          "linear_type": "RowParallelLinear",
+          "full_weight_shape": [
+            2048,
+            2048
+          ],
+          "tp_weight_shape": [
+            2048,
+            2048
+          ],
+          "partition": {
+            "dim": 0,
+            "strategy": "row_parallel",
+            "details": "Row-parallel: input 2048 split by heads across ranks."
+          },
+          "comm_after": "all_reduce",
+          "sub_components": null
+        },
+        {
+          "name": "gate",
+          "op_type": "moe_gate",
+          "linear_type": "ReplicatedLinear",
+          "full_weight_shape": [
+            64,
+            2048
+          ],
+          "tp_weight_shape": [
+            64,
+            2048
+          ],
+          "partition": {
+            "dim": -1,
+            "strategy": "replicated",
+            "details": "Router: 64 experts. Replicated across all ranks."
+          },
+          "comm_after": null,
+          "sub_components": null
+        },
+        {
+          "name": "experts_gate_up",
+          "op_type": "linear",
+          "linear_type": "MergedColumnParallelLinear",
+          "full_weight_shape": [
+            64,
+            2816,
+            2048
+          ],
+          "tp_weight_shape": [
+            64,
+            2816,
+            2048
+          ],
+          "partition": {
+            "dim": 1,
+            "strategy": "column_parallel",
+            "details": "64 experts, each gate+up [2816, 2048]. moe_inter dimension split by tp."
+          },
+          "comm_after": null,
+          "sub_components": [
+            "w1 (gate)",
+            "w3 (up)"
+          ]
+        },
+        {
+          "name": "experts_down",
+          "op_type": "linear",
+          "linear_type": "RowParallelLinear",
+          "full_weight_shape": [
+            64,
+            2048,
+            1408
+          ],
+          "tp_weight_shape": [
+            64,
+            2048,
+            1408
+          ],
+          "partition": {
+            "dim": 0,
+            "strategy": "row_parallel",
+            "details": "64 experts, each down [2048, 1408]. Input dim (moe_inter) split by tp."
+          },
+          "comm_after": null,
+          "sub_components": [
+            "w2 (down)"
+          ]
+        },
+        {
+          "name": "shared_experts_gate_up",
+          "op_type": "linear",
+          "linear_type": "MergedColumnParallelLinear",
+          "full_weight_shape": [
+            5632,
+            2048
+          ],
+          "tp_weight_shape": [
+            5632,
+            2048
+          ],
+          "partition": {
+            "dim": 1,
+            "strategy": "merged_column_parallel",
+            "details": "Shared experts (2): gate+up fused, column-split."
+          },
+          "comm_after": null,
+          "sub_components": [
+            "shared_gate_proj",
+            "shared_up_proj"
+          ]
+        },
+        {
+          "name": "shared_experts_down",
+          "op_type": "linear",
+          "linear_type": "RowParallelLinear",
+          "full_weight_shape": [
+            2048,
+            2816
+          ],
+          "tp_weight_shape": [
+            2048,
+            2816
+          ],
+          "partition": {
+            "dim": 0,
+            "strategy": "row_parallel",
+            "details": "Shared experts down: row-parallel."
+          },
+          "comm_after": null,
+          "sub_components": null
+        },
+        {
+          "name": "moe_output_reduce",
+          "op_type": "comm",
+          "linear_type": null,
+          "full_weight_shape": [
+            0,
+            0
+          ],
+          "tp_weight_shape": [
+            0,
+            0
+          ],
+          "partition": null,
+          "comm_after": "all_reduce",
+          "sub_components": null
+        }
+      ]
+    },
+    {
+      "layer_id": 18,
+      "layer_type": "moe",
+      "operators": [
+        {
+          "name": "fused_qkv_a_proj_with_mqa",
+          "op_type": "linear",
+          "linear_type": "ReplicatedLinear",
+          "full_weight_shape": [
+            2112,
+            2048
+          ],
+          "tp_weight_shape": [
+            2112,
+            2048
+          ],
+          "partition": {
+            "dim": -1,
+            "strategy": "replicated",
+            "details": "Replicated: projects to small latent space (q_lora=1536 + kv_lora=512 + rope=64). Not worth sharding."
+          },
+          "comm_after": null,
+          "sub_components": [
+            "q_a_proj",
+            "kv_a_proj_with_mqa"
+          ]
+        },
+        {
+          "name": "q_b_proj",
+          "op_type": "linear",
+          "linear_type": "ColumnParallelLinear",
+          "full_weight_shape": [
+            3072,
+            1536
+          ],
+          "tp_weight_shape": [
+            3072,
+            1536
+          ],
+          "partition": {
+            "dim": 1,
+            "strategy": "column_parallel",
+            "details": "Column-parallel: expands latent q (1536) to 16 heads × 192 dim. Split by heads."
+          },
+          "comm_after": null,
+          "sub_components": null
+        },
+        {
+          "name": "kv_b_proj",
+          "op_type": "linear",
+          "linear_type": "ColumnParallelLinear",
+          "full_weight_shape": [
+            4096,
+            512
+          ],
+          "tp_weight_shape": [
+            4096,
+            512
+          ],
+          "partition": {
+            "dim": 1,
+            "strategy": "column_parallel",
+            "details": "Column-parallel: expands KV latent (512) to 16 heads × (128 + 128) dim."
+          },
+          "comm_after": null,
+          "sub_components": null
+        },
+        {
+          "name": "o_proj",
+          "op_type": "linear",
+          "linear_type": "RowParallelLinear",
+          "full_weight_shape": [
+            2048,
+            2048
+          ],
+          "tp_weight_shape": [
+            2048,
+            2048
+          ],
+          "partition": {
+            "dim": 0,
+            "strategy": "row_parallel",
+            "details": "Row-parallel: input 2048 split by heads across ranks."
+          },
+          "comm_after": "all_reduce",
+          "sub_components": null
+        },
+        {
+          "name": "gate",
+          "op_type": "moe_gate",
+          "linear_type": "ReplicatedLinear",
+          "full_weight_shape": [
+            64,
+            2048
+          ],
+          "tp_weight_shape": [
+            64,
+            2048
+          ],
+          "partition": {
+            "dim": -1,
+            "strategy": "replicated",
+            "details": "Router: 64 experts. Replicated across all ranks."
+          },
+          "comm_after": null,
+          "sub_components": null
+        },
+        {
+          "name": "experts_gate_up",
+          "op_type": "linear",
+          "linear_type": "MergedColumnParallelLinear",
+          "full_weight_shape": [
+            64,
+            2816,
+            2048
+          ],
+          "tp_weight_shape": [
+            64,
+            2816,
+            2048
+          ],
+          "partition": {
+            "dim": 1,
+            "strategy": "column_parallel",
+            "details": "64 experts, each gate+up [2816, 2048]. moe_inter dimension split by tp."
+          },
+          "comm_after": null,
+          "sub_components": [
+            "w1 (gate)",
+            "w3 (up)"
+          ]
+        },
+        {
+          "name": "experts_down",
+          "op_type": "linear",
+          "linear_type": "RowParallelLinear",
+          "full_weight_shape": [
+            64,
+            2048,
+            1408
+          ],
+          "tp_weight_shape": [
+            64,
+            2048,
+            1408
+          ],
+          "partition": {
+            "dim": 0,
+            "strategy": "row_parallel",
+            "details": "64 experts, each down [2048, 1408]. Input dim (moe_inter) split by tp."
+          },
+          "comm_after": null,
+          "sub_components": [
+            "w2 (down)"
+          ]
+        },
+        {
+          "name": "shared_experts_gate_up",
+          "op_type": "linear",
+          "linear_type": "MergedColumnParallelLinear",
+          "full_weight_shape": [
+            5632,
+            2048
+          ],
+          "tp_weight_shape": [
+            5632,
+            2048
+          ],
+          "partition": {
+            "dim": 1,
+            "strategy": "merged_column_parallel",
+            "details": "Shared experts (2): gate+up fused, column-split."
+          },
+          "comm_after": null,
+          "sub_components": [
+            "shared_gate_proj",
+            "shared_up_proj"
+          ]
+        },
+        {
+          "name": "shared_experts_down",
+          "op_type": "linear",
+          "linear_type": "RowParallelLinear",
+          "full_weight_shape": [
+            2048,
+            2816
+          ],
+          "tp_weight_shape": [
+            2048,
+            2816
+          ],
+          "partition": {
+            "dim": 0,
+            "strategy": "row_parallel",
+            "details": "Shared experts down: row-parallel."
+          },
+          "comm_after": null,
+          "sub_components": null
+        },
+        {
+          "name": "moe_output_reduce",
+          "op_type": "comm",
+          "linear_type": null,
+          "full_weight_shape": [
+            0,
+            0
+          ],
+          "tp_weight_shape": [
+            0,
+            0
+          ],
+          "partition": null,
+          "comm_after": "all_reduce",
+          "sub_components": null
+        }
+      ]
+    },
+    {
+      "layer_id": 19,
+      "layer_type": "moe",
+      "operators": [
+        {
+          "name": "fused_qkv_a_proj_with_mqa",
+          "op_type": "linear",
+          "linear_type": "ReplicatedLinear",
+          "full_weight_shape": [
+            2112,
+            2048
+          ],
+          "tp_weight_shape": [
+            2112,
+            2048
+          ],
+          "partition": {
+            "dim": -1,
+            "strategy": "replicated",
+            "details": "Replicated: projects to small latent space (q_lora=1536 + kv_lora=512 + rope=64). Not worth sharding."
+          },
+          "comm_after": null,
+          "sub_components": [
+            "q_a_proj",
+            "kv_a_proj_with_mqa"
+          ]
+        },
+        {
+          "name": "q_b_proj",
+          "op_type": "linear",
+          "linear_type": "ColumnParallelLinear",
+          "full_weight_shape": [
+            3072,
+            1536
+          ],
+          "tp_weight_shape": [
+            3072,
+            1536
+          ],
+          "partition": {
+            "dim": 1,
+            "strategy": "column_parallel",
+            "details": "Column-parallel: expands latent q (1536) to 16 heads × 192 dim. Split by heads."
+          },
+          "comm_after": null,
+          "sub_components": null
+        },
+        {
+          "name": "kv_b_proj",
+          "op_type": "linear",
+          "linear_type": "ColumnParallelLinear",
+          "full_weight_shape": [
+            4096,
+            512
+          ],
+          "tp_weight_shape": [
+            4096,
+            512
+          ],
+          "partition": {
+            "dim": 1,
+            "strategy": "column_parallel",
+            "details": "Column-parallel: expands KV latent (512) to 16 heads × (128 + 128) dim."
+          },
+          "comm_after": null,
+          "sub_components": null
+        },
+        {
+          "name": "o_proj",
+          "op_type": "linear",
+          "linear_type": "RowParallelLinear",
+          "full_weight_shape": [
+            2048,
+            2048
+          ],
+          "tp_weight_shape": [
+            2048,
+            2048
+          ],
+          "partition": {
+            "dim": 0,
+            "strategy": "row_parallel",
+            "details": "Row-parallel: input 2048 split by heads across ranks."
+          },
+          "comm_after": "all_reduce",
+          "sub_components": null
+        },
+        {
+          "name": "gate",
+          "op_type": "moe_gate",
+          "linear_type": "ReplicatedLinear",
+          "full_weight_shape": [
+            64,
+            2048
+          ],
+          "tp_weight_shape": [
+            64,
+            2048
+          ],
+          "partition": {
+            "dim": -1,
+            "strategy": "replicated",
+            "details": "Router: 64 experts. Replicated across all ranks."
+          },
+          "comm_after": null,
+          "sub_components": null
+        },
+        {
+          "name": "experts_gate_up",
+          "op_type": "linear",
+          "linear_type": "MergedColumnParallelLinear",
+          "full_weight_shape": [
+            64,
+            2816,
+            2048
+          ],
+          "tp_weight_shape": [
+            64,
+            2816,
+            2048
+          ],
+          "partition": {
+            "dim": 1,
+            "strategy": "column_parallel",
+            "details": "64 experts, each gate+up [2816, 2048]. moe_inter dimension split by tp."
+          },
+          "comm_after": null,
+          "sub_components": [
+            "w1 (gate)",
+            "w3 (up)"
+          ]
+        },
+        {
+          "name": "experts_down",
+          "op_type": "linear",
+          "linear_type": "RowParallelLinear",
+          "full_weight_shape": [
+            64,
+            2048,
+            1408
+          ],
+          "tp_weight_shape": [
+            64,
+            2048,
+            1408
+          ],
+          "partition": {
+            "dim": 0,
+            "strategy": "row_parallel",
+            "details": "64 experts, each down [2048, 1408]. Input dim (moe_inter) split by tp."
+          },
+          "comm_after": null,
+          "sub_components": [
+            "w2 (down)"
+          ]
+        },
+        {
+          "name": "shared_experts_gate_up",
+          "op_type": "linear",
+          "linear_type": "MergedColumnParallelLinear",
+          "full_weight_shape": [
+            5632,
+            2048
+          ],
+          "tp_weight_shape": [
+            5632,
+            2048
+          ],
+          "partition": {
+            "dim": 1,
+            "strategy": "merged_column_parallel",
+            "details": "Shared experts (2): gate+up fused, column-split."
+          },
+          "comm_after": null,
+          "sub_components": [
+            "shared_gate_proj",
+            "shared_up_proj"
+          ]
+        },
+        {
+          "name": "shared_experts_down",
+          "op_type": "linear",
+          "linear_type": "RowParallelLinear",
+          "full_weight_shape": [
+            2048,
+            2816
+          ],
+          "tp_weight_shape": [
+            2048,
+            2816
+          ],
+          "partition": {
+            "dim": 0,
+            "strategy": "row_parallel",
+            "details": "Shared experts down: row-parallel."
+          },
+          "comm_after": null,
+          "sub_components": null
+        },
+        {
+          "name": "moe_output_reduce",
+          "op_type": "comm",
+          "linear_type": null,
+          "full_weight_shape": [
+            0,
+            0
+          ],
+          "tp_weight_shape": [
+            0,
+            0
+          ],
+          "partition": null,
+          "comm_after": "all_reduce",
+          "sub_components": null
+        }
+      ]
+    },
+    {
+      "layer_id": 20,
+      "layer_type": "moe",
+      "operators": [
+        {
+          "name": "fused_qkv_a_proj_with_mqa",
+          "op_type": "linear",
+          "linear_type": "ReplicatedLinear",
+          "full_weight_shape": [
+            2112,
+            2048
+          ],
+          "tp_weight_shape": [
+            2112,
+            2048
+          ],
+          "partition": {
+            "dim": -1,
+            "strategy": "replicated",
+            "details": "Replicated: projects to small latent space (q_lora=1536 + kv_lora=512 + rope=64). Not worth sharding."
+          },
+          "comm_after": null,
+          "sub_components": [
+            "q_a_proj",
+            "kv_a_proj_with_mqa"
+          ]
+        },
+        {
+          "name": "q_b_proj",
+          "op_type": "linear",
+          "linear_type": "ColumnParallelLinear",
+          "full_weight_shape": [
+            3072,
+            1536
+          ],
+          "tp_weight_shape": [
+            3072,
+            1536
+          ],
+          "partition": {
+            "dim": 1,
+            "strategy": "column_parallel",
+            "details": "Column-parallel: expands latent q (1536) to 16 heads × 192 dim. Split by heads."
+          },
+          "comm_after": null,
+          "sub_components": null
+        },
+        {
+          "name": "kv_b_proj",
+          "op_type": "linear",
+          "linear_type": "ColumnParallelLinear",
+          "full_weight_shape": [
+            4096,
+            512
+          ],
+          "tp_weight_shape": [
+            4096,
+            512
+          ],
+          "partition": {
+            "dim": 1,
+            "strategy": "column_parallel",
+            "details": "Column-parallel: expands KV latent (512) to 16 heads × (128 + 128) dim."
+          },
+          "comm_after": null,
+          "sub_components": null
+        },
+        {
+          "name": "o_proj",
+          "op_type": "linear",
+          "linear_type": "RowParallelLinear",
+          "full_weight_shape": [
+            2048,
+            2048
+          ],
+          "tp_weight_shape": [
+            2048,
+            2048
+          ],
+          "partition": {
+            "dim": 0,
+            "strategy": "row_parallel",
+            "details": "Row-parallel: input 2048 split by heads across ranks."
+          },
+          "comm_after": "all_reduce",
+          "sub_components": null
+        },
+        {
+          "name": "gate",
+          "op_type": "moe_gate",
+          "linear_type": "ReplicatedLinear",
+          "full_weight_shape": [
+            64,
+            2048
+          ],
+          "tp_weight_shape": [
+            64,
+            2048
+          ],
+          "partition": {
+            "dim": -1,
+            "strategy": "replicated",
+            "details": "Router: 64 experts. Replicated across all ranks."
+          },
+          "comm_after": null,
+          "sub_components": null
+        },
+        {
+          "name": "experts_gate_up",
+          "op_type": "linear",
+          "linear_type": "MergedColumnParallelLinear",
+          "full_weight_shape": [
+            64,
+            2816,
+            2048
+          ],
+          "tp_weight_shape": [
+            64,
+            2816,
+            2048
+          ],
+          "partition": {
+            "dim": 1,
+            "strategy": "column_parallel",
+            "details": "64 experts, each gate+up [2816, 2048]. moe_inter dimension split by tp."
+          },
+          "comm_after": null,
+          "sub_components": [
+            "w1 (gate)",
+            "w3 (up)"
+          ]
+        },
+        {
+          "name": "experts_down",
+          "op_type": "linear",
+          "linear_type": "RowParallelLinear",
+          "full_weight_shape": [
+            64,
+            2048,
+            1408
+          ],
+          "tp_weight_shape": [
+            64,
+            2048,
+            1408
+          ],
+          "partition": {
+            "dim": 0,
+            "strategy": "row_parallel",
+            "details": "64 experts, each down [2048, 1408]. Input dim (moe_inter) split by tp."
+          },
+          "comm_after": null,
+          "sub_components": [
+            "w2 (down)"
+          ]
+        },
+        {
+          "name": "shared_experts_gate_up",
+          "op_type": "linear",
+          "linear_type": "MergedColumnParallelLinear",
+          "full_weight_shape": [
+            5632,
+            2048
+          ],
+          "tp_weight_shape": [
+            5632,
+            2048
+          ],
+          "partition": {
+            "dim": 1,
+            "strategy": "merged_column_parallel",
+            "details": "Shared experts (2): gate+up fused, column-split."
+          },
+          "comm_after": null,
+          "sub_components": [
+            "shared_gate_proj",
+            "shared_up_proj"
+          ]
+        },
+        {
+          "name": "shared_experts_down",
+          "op_type": "linear",
+          "linear_type": "RowParallelLinear",
+          "full_weight_shape": [
+            2048,
+            2816
+          ],
+          "tp_weight_shape": [
+            2048,
+            2816
+          ],
+          "partition": {
+            "dim": 0,
+            "strategy": "row_parallel",
+            "details": "Shared experts down: row-parallel."
+          },
+          "comm_after": null,
+          "sub_components": null
+        },
+        {
+          "name": "moe_output_reduce",
+          "op_type": "comm",
+          "linear_type": null,
+          "full_weight_shape": [
+            0,
+            0
+          ],
+          "tp_weight_shape": [
+            0,
+            0
+          ],
+          "partition": null,
+          "comm_after": "all_reduce",
+          "sub_components": null
+        }
+      ]
+    },
+    {
+      "layer_id": 21,
+      "layer_type": "moe",
+      "operators": [
+        {
+          "name": "fused_qkv_a_proj_with_mqa",
+          "op_type": "linear",
+          "linear_type": "ReplicatedLinear",
+          "full_weight_shape": [
+            2112,
+            2048
+          ],
+          "tp_weight_shape": [
+            2112,
+            2048
+          ],
+          "partition": {
+            "dim": -1,
+            "strategy": "replicated",
+            "details": "Replicated: projects to small latent space (q_lora=1536 + kv_lora=512 + rope=64). Not worth sharding."
+          },
+          "comm_after": null,
+          "sub_components": [
+            "q_a_proj",
+            "kv_a_proj_with_mqa"
+          ]
+        },
+        {
+          "name": "q_b_proj",
+          "op_type": "linear",
+          "linear_type": "ColumnParallelLinear",
+          "full_weight_shape": [
+            3072,
+            1536
+          ],
+          "tp_weight_shape": [
+            3072,
+            1536
+          ],
+          "partition": {
+            "dim": 1,
+            "strategy": "column_parallel",
+            "details": "Column-parallel: expands latent q (1536) to 16 heads × 192 dim. Split by heads."
+          },
+          "comm_after": null,
+          "sub_components": null
+        },
+        {
+          "name": "kv_b_proj",
+          "op_type": "linear",
+          "linear_type": "ColumnParallelLinear",
+          "full_weight_shape": [
+            4096,
+            512
+          ],
+          "tp_weight_shape": [
+            4096,
+            512
+          ],
+          "partition": {
+            "dim": 1,
+            "strategy": "column_parallel",
+            "details": "Column-parallel: expands KV latent (512) to 16 heads × (128 + 128) dim."
+          },
+          "comm_after": null,
+          "sub_components": null
+        },
+        {
+          "name": "o_proj",
+          "op_type": "linear",
+          "linear_type": "RowParallelLinear",
+          "full_weight_shape": [
+            2048,
+            2048
+          ],
+          "tp_weight_shape": [
+            2048,
+            2048
+          ],
+          "partition": {
+            "dim": 0,
+            "strategy": "row_parallel",
+            "details": "Row-parallel: input 2048 split by heads across ranks."
+          },
+          "comm_after": "all_reduce",
+          "sub_components": null
+        },
+        {
+          "name": "gate",
+          "op_type": "moe_gate",
+          "linear_type": "ReplicatedLinear",
+          "full_weight_shape": [
+            64,
+            2048
+          ],
+          "tp_weight_shape": [
+            64,
+            2048
+          ],
+          "partition": {
+            "dim": -1,
+            "strategy": "replicated",
+            "details": "Router: 64 experts. Replicated across all ranks."
+          },
+          "comm_after": null,
+          "sub_components": null
+        },
+        {
+          "name": "experts_gate_up",
+          "op_type": "linear",
+          "linear_type": "MergedColumnParallelLinear",
+          "full_weight_shape": [
+            64,
+            2816,
+            2048
+          ],
+          "tp_weight_shape": [
+            64,
+            2816,
+            2048
+          ],
+          "partition": {
+            "dim": 1,
+            "strategy": "column_parallel",
+            "details": "64 experts, each gate+up [2816, 2048]. moe_inter dimension split by tp."
+          },
+          "comm_after": null,
+          "sub_components": [
+            "w1 (gate)",
+            "w3 (up)"
+          ]
+        },
+        {
+          "name": "experts_down",
+          "op_type": "linear",
+          "linear_type": "RowParallelLinear",
+          "full_weight_shape": [
+            64,
+            2048,
+            1408
+          ],
+          "tp_weight_shape": [
+            64,
+            2048,
+            1408
+          ],
+          "partition": {
+            "dim": 0,
+            "strategy": "row_parallel",
+            "details": "64 experts, each down [2048, 1408]. Input dim (moe_inter) split by tp."
+          },
+          "comm_after": null,
+          "sub_components": [
+            "w2 (down)"
+          ]
+        },
+        {
+          "name": "shared_experts_gate_up",
+          "op_type": "linear",
+          "linear_type": "MergedColumnParallelLinear",
+          "full_weight_shape": [
+            5632,
+            2048
+          ],
+          "tp_weight_shape": [
+            5632,
+            2048
+          ],
+          "partition": {
+            "dim": 1,
+            "strategy": "merged_column_parallel",
+            "details": "Shared experts (2): gate+up fused, column-split."
+          },
+          "comm_after": null,
+          "sub_components": [
+            "shared_gate_proj",
+            "shared_up_proj"
+          ]
+        },
+        {
+          "name": "shared_experts_down",
+          "op_type": "linear",
+          "linear_type": "RowParallelLinear",
+          "full_weight_shape": [
+            2048,
+            2816
+          ],
+          "tp_weight_shape": [
+            2048,
+            2816
+          ],
+          "partition": {
+            "dim": 0,
+            "strategy": "row_parallel",
+            "details": "Shared experts down: row-parallel."
+          },
+          "comm_after": null,
+          "sub_components": null
+        },
+        {
+          "name": "moe_output_reduce",
+          "op_type": "comm",
+          "linear_type": null,
+          "full_weight_shape": [
+            0,
+            0
+          ],
+          "tp_weight_shape": [
+            0,
+            0
+          ],
+          "partition": null,
+          "comm_after": "all_reduce",
+          "sub_components": null
+        }
+      ]
+    },
+    {
+      "layer_id": 22,
+      "layer_type": "moe",
+      "operators": [
+        {
+          "name": "fused_qkv_a_proj_with_mqa",
+          "op_type": "linear",
+          "linear_type": "ReplicatedLinear",
+          "full_weight_shape": [
+            2112,
+            2048
+          ],
+          "tp_weight_shape": [
+            2112,
+            2048
+          ],
+          "partition": {
+            "dim": -1,
+            "strategy": "replicated",
+            "details": "Replicated: projects to small latent space (q_lora=1536 + kv_lora=512 + rope=64). Not worth sharding."
+          },
+          "comm_after": null,
+          "sub_components": [
+            "q_a_proj",
+            "kv_a_proj_with_mqa"
+          ]
+        },
+        {
+          "name": "q_b_proj",
+          "op_type": "linear",
+          "linear_type": "ColumnParallelLinear",
+          "full_weight_shape": [
+            3072,
+            1536
+          ],
+          "tp_weight_shape": [
+            3072,
+            1536
+          ],
+          "partition": {
+            "dim": 1,
+            "strategy": "column_parallel",
+            "details": "Column-parallel: expands latent q (1536) to 16 heads × 192 dim. Split by heads."
+          },
+          "comm_after": null,
+          "sub_components": null
+        },
+        {
+          "name": "kv_b_proj",
+          "op_type": "linear",
+          "linear_type": "ColumnParallelLinear",
+          "full_weight_shape": [
+            4096,
+            512
+          ],
+          "tp_weight_shape": [
+            4096,
+            512
+          ],
+          "partition": {
+            "dim": 1,
+            "strategy": "column_parallel",
+            "details": "Column-parallel: expands KV latent (512) to 16 heads × (128 + 128) dim."
+          },
+          "comm_after": null,
+          "sub_components": null
+        },
+        {
+          "name": "o_proj",
+          "op_type": "linear",
+          "linear_type": "RowParallelLinear",
+          "full_weight_shape": [
+            2048,
+            2048
+          ],
+          "tp_weight_shape": [
+            2048,
+            2048
+          ],
+          "partition": {
+            "dim": 0,
+            "strategy": "row_parallel",
+            "details": "Row-parallel: input 2048 split by heads across ranks."
+          },
+          "comm_after": "all_reduce",
+          "sub_components": null
+        },
+        {
+          "name": "gate",
+          "op_type": "moe_gate",
+          "linear_type": "ReplicatedLinear",
+          "full_weight_shape": [
+            64,
+            2048
+          ],
+          "tp_weight_shape": [
+            64,
+            2048
+          ],
+          "partition": {
+            "dim": -1,
+            "strategy": "replicated",
+            "details": "Router: 64 experts. Replicated across all ranks."
+          },
+          "comm_after": null,
+          "sub_components": null
+        },
+        {
+          "name": "experts_gate_up",
+          "op_type": "linear",
+          "linear_type": "MergedColumnParallelLinear",
+          "full_weight_shape": [
+            64,
+            2816,
+            2048
+          ],
+          "tp_weight_shape": [
+            64,
+            2816,
+            2048
+          ],
+          "partition": {
+            "dim": 1,
+            "strategy": "column_parallel",
+            "details": "64 experts, each gate+up [2816, 2048]. moe_inter dimension split by tp."
+          },
+          "comm_after": null,
+          "sub_components": [
+            "w1 (gate)",
+            "w3 (up)"
+          ]
+        },
+        {
+          "name": "experts_down",
+          "op_type": "linear",
+          "linear_type": "RowParallelLinear",
+          "full_weight_shape": [
+            64,
+            2048,
+            1408
+          ],
+          "tp_weight_shape": [
+            64,
+            2048,
+            1408
+          ],
+          "partition": {
+            "dim": 0,
+            "strategy": "row_parallel",
+            "details": "64 experts, each down [2048, 1408]. Input dim (moe_inter) split by tp."
+          },
+          "comm_after": null,
+          "sub_components": [
+            "w2 (down)"
+          ]
+        },
+        {
+          "name": "shared_experts_gate_up",
+          "op_type": "linear",
+          "linear_type": "MergedColumnParallelLinear",
+          "full_weight_shape": [
+            5632,
+            2048
+          ],
+          "tp_weight_shape": [
+            5632,
+            2048
+          ],
+          "partition": {
+            "dim": 1,
+            "strategy": "merged_column_parallel",
+            "details": "Shared experts (2): gate+up fused, column-split."
+          },
+          "comm_after": null,
+          "sub_components": [
+            "shared_gate_proj",
+            "shared_up_proj"
+          ]
+        },
+        {
+          "name": "shared_experts_down",
+          "op_type": "linear",
+          "linear_type": "RowParallelLinear",
+          "full_weight_shape": [
+            2048,
+            2816
+          ],
+          "tp_weight_shape": [
+            2048,
+            2816
+          ],
+          "partition": {
+            "dim": 0,
+            "strategy": "row_parallel",
+            "details": "Shared experts down: row-parallel."
+          },
+          "comm_after": null,
+          "sub_components": null
+        },
+        {
+          "name": "moe_output_reduce",
+          "op_type": "comm",
+          "linear_type": null,
+          "full_weight_shape": [
+            0,
+            0
+          ],
+          "tp_weight_shape": [
+            0,
+            0
+          ],
+          "partition": null,
+          "comm_after": "all_reduce",
+          "sub_components": null
+        }
+      ]
+    },
+    {
+      "layer_id": 23,
+      "layer_type": "moe",
+      "operators": [
+        {
+          "name": "fused_qkv_a_proj_with_mqa",
+          "op_type": "linear",
+          "linear_type": "ReplicatedLinear",
+          "full_weight_shape": [
+            2112,
+            2048
+          ],
+          "tp_weight_shape": [
+            2112,
+            2048
+          ],
+          "partition": {
+            "dim": -1,
+            "strategy": "replicated",
+            "details": "Replicated: projects to small latent space (q_lora=1536 + kv_lora=512 + rope=64). Not worth sharding."
+          },
+          "comm_after": null,
+          "sub_components": [
+            "q_a_proj",
+            "kv_a_proj_with_mqa"
+          ]
+        },
+        {
+          "name": "q_b_proj",
+          "op_type": "linear",
+          "linear_type": "ColumnParallelLinear",
+          "full_weight_shape": [
+            3072,
+            1536
+          ],
+          "tp_weight_shape": [
+            3072,
+            1536
+          ],
+          "partition": {
+            "dim": 1,
+            "strategy": "column_parallel",
+            "details": "Column-parallel: expands latent q (1536) to 16 heads × 192 dim. Split by heads."
+          },
+          "comm_after": null,
+          "sub_components": null
+        },
+        {
+          "name": "kv_b_proj",
+          "op_type": "linear",
+          "linear_type": "ColumnParallelLinear",
+          "full_weight_shape": [
+            4096,
+            512
+          ],
+          "tp_weight_shape": [
+            4096,
+            512
+          ],
+          "partition": {
+            "dim": 1,
+            "strategy": "column_parallel",
+            "details": "Column-parallel: expands KV latent (512) to 16 heads × (128 + 128) dim."
+          },
+          "comm_after": null,
+          "sub_components": null
+        },
+        {
+          "name": "o_proj",
+          "op_type": "linear",
+          "linear_type": "RowParallelLinear",
+          "full_weight_shape": [
+            2048,
+            2048
+          ],
+          "tp_weight_shape": [
+            2048,
+            2048
+          ],
+          "partition": {
+            "dim": 0,
+            "strategy": "row_parallel",
+            "details": "Row-parallel: input 2048 split by heads across ranks."
+          },
+          "comm_after": "all_reduce",
+          "sub_components": null
+        },
+        {
+          "name": "gate",
+          "op_type": "moe_gate",
+          "linear_type": "ReplicatedLinear",
+          "full_weight_shape": [
+            64,
+            2048
+          ],
+          "tp_weight_shape": [
+            64,
+            2048
+          ],
+          "partition": {
+            "dim": -1,
+            "strategy": "replicated",
+            "details": "Router: 64 experts. Replicated across all ranks."
+          },
+          "comm_after": null,
+          "sub_components": null
+        },
+        {
+          "name": "experts_gate_up",
+          "op_type": "linear",
+          "linear_type": "MergedColumnParallelLinear",
+          "full_weight_shape": [
+            64,
+            2816,
+            2048
+          ],
+          "tp_weight_shape": [
+            64,
+            2816,
+            2048
+          ],
+          "partition": {
+            "dim": 1,
+            "strategy": "column_parallel",
+            "details": "64 experts, each gate+up [2816, 2048]. moe_inter dimension split by tp."
+          },
+          "comm_after": null,
+          "sub_components": [
+            "w1 (gate)",
+            "w3 (up)"
+          ]
+        },
+        {
+          "name": "experts_down",
+          "op_type": "linear",
+          "linear_type": "RowParallelLinear",
+          "full_weight_shape": [
+            64,
+            2048,
+            1408
+          ],
+          "tp_weight_shape": [
+            64,
+            2048,
+            1408
+          ],
+          "partition": {
+            "dim": 0,
+            "strategy": "row_parallel",
+            "details": "64 experts, each down [2048, 1408]. Input dim (moe_inter) split by tp."
+          },
+          "comm_after": null,
+          "sub_components": [
+            "w2 (down)"
+          ]
+        },
+        {
+          "name": "shared_experts_gate_up",
+          "op_type": "linear",
+          "linear_type": "MergedColumnParallelLinear",
+          "full_weight_shape": [
+            5632,
+            2048
+          ],
+          "tp_weight_shape": [
+            5632,
+            2048
+          ],
+          "partition": {
+            "dim": 1,
+            "strategy": "merged_column_parallel",
+            "details": "Shared experts (2): gate+up fused, column-split."
+          },
+          "comm_after": null,
+          "sub_components": [
+            "shared_gate_proj",
+            "shared_up_proj"
+          ]
+        },
+        {
+          "name": "shared_experts_down",
+          "op_type": "linear",
+          "linear_type": "RowParallelLinear",
+          "full_weight_shape": [
+            2048,
+            2816
+          ],
+          "tp_weight_shape": [
+            2048,
+            2816
+          ],
+          "partition": {
+            "dim": 0,
+            "strategy": "row_parallel",
+            "details": "Shared experts down: row-parallel."
+          },
+          "comm_after": null,
+          "sub_components": null
+        },
+        {
+          "name": "moe_output_reduce",
+          "op_type": "comm",
+          "linear_type": null,
+          "full_weight_shape": [
+            0,
+            0
+          ],
+          "tp_weight_shape": [
+            0,
+            0
+          ],
+          "partition": null,
+          "comm_after": "all_reduce",
+          "sub_components": null
+        }
+      ]
+    },
+    {
+      "layer_id": 24,
+      "layer_type": "moe",
+      "operators": [
+        {
+          "name": "fused_qkv_a_proj_with_mqa",
+          "op_type": "linear",
+          "linear_type": "ReplicatedLinear",
+          "full_weight_shape": [
+            2112,
+            2048
+          ],
+          "tp_weight_shape": [
+            2112,
+            2048
+          ],
+          "partition": {
+            "dim": -1,
+            "strategy": "replicated",
+            "details": "Replicated: projects to small latent space (q_lora=1536 + kv_lora=512 + rope=64). Not worth sharding."
+          },
+          "comm_after": null,
+          "sub_components": [
+            "q_a_proj",
+            "kv_a_proj_with_mqa"
+          ]
+        },
+        {
+          "name": "q_b_proj",
+          "op_type": "linear",
+          "linear_type": "ColumnParallelLinear",
+          "full_weight_shape": [
+            3072,
+            1536
+          ],
+          "tp_weight_shape": [
+            3072,
+            1536
+          ],
+          "partition": {
+            "dim": 1,
+            "strategy": "column_parallel",
+            "details": "Column-parallel: expands latent q (1536) to 16 heads × 192 dim. Split by heads."
+          },
+          "comm_after": null,
+          "sub_components": null
+        },
+        {
+          "name": "kv_b_proj",
+          "op_type": "linear",
+          "linear_type": "ColumnParallelLinear",
+          "full_weight_shape": [
+            4096,
+            512
+          ],
+          "tp_weight_shape": [
+            4096,
+            512
+          ],
+          "partition": {
+            "dim": 1,
+            "strategy": "column_parallel",
+            "details": "Column-parallel: expands KV latent (512) to 16 heads × (128 + 128) dim."
+          },
+          "comm_after": null,
+          "sub_components": null
+        },
+        {
+          "name": "o_proj",
+          "op_type": "linear",
+          "linear_type": "RowParallelLinear",
+          "full_weight_shape": [
+            2048,
+            2048
+          ],
+          "tp_weight_shape": [
+            2048,
+            2048
+          ],
+          "partition": {
+            "dim": 0,
+            "strategy": "row_parallel",
+            "details": "Row-parallel: input 2048 split by heads across ranks."
+          },
+          "comm_after": "all_reduce",
+          "sub_components": null
+        },
+        {
+          "name": "gate",
+          "op_type": "moe_gate",
+          "linear_type": "ReplicatedLinear",
+          "full_weight_shape": [
+            64,
+            2048
+          ],
+          "tp_weight_shape": [
+            64,
+            2048
+          ],
+          "partition": {
+            "dim": -1,
+            "strategy": "replicated",
+            "details": "Router: 64 experts. Replicated across all ranks."
+          },
+          "comm_after": null,
+          "sub_components": null
+        },
+        {
+          "name": "experts_gate_up",
+          "op_type": "linear",
+          "linear_type": "MergedColumnParallelLinear",
+          "full_weight_shape": [
+            64,
+            2816,
+            2048
+          ],
+          "tp_weight_shape": [
+            64,
+            2816,
+            2048
+          ],
+          "partition": {
+            "dim": 1,
+            "strategy": "column_parallel",
+            "details": "64 experts, each gate+up [2816, 2048]. moe_inter dimension split by tp."
+          },
+          "comm_after": null,
+          "sub_components": [
+            "w1 (gate)",
+            "w3 (up)"
+          ]
+        },
+        {
+          "name": "experts_down",
+          "op_type": "linear",
+          "linear_type": "RowParallelLinear",
+          "full_weight_shape": [
+            64,
+            2048,
+            1408
+          ],
+          "tp_weight_shape": [
+            64,
+            2048,
+            1408
+          ],
+          "partition": {
+            "dim": 0,
+            "strategy": "row_parallel",
+            "details": "64 experts, each down [2048, 1408]. Input dim (moe_inter) split by tp."
+          },
+          "comm_after": null,
+          "sub_components": [
+            "w2 (down)"
+          ]
+        },
+        {
+          "name": "shared_experts_gate_up",
+          "op_type": "linear",
+          "linear_type": "MergedColumnParallelLinear",
+          "full_weight_shape": [
+            5632,
+            2048
+          ],
+          "tp_weight_shape": [
+            5632,
+            2048
+          ],
+          "partition": {
+            "dim": 1,
+            "strategy": "merged_column_parallel",
+            "details": "Shared experts (2): gate+up fused, column-split."
+          },
+          "comm_after": null,
+          "sub_components": [
+            "shared_gate_proj",
+            "shared_up_proj"
+          ]
+        },
+        {
+          "name": "shared_experts_down",
+          "op_type": "linear",
+          "linear_type": "RowParallelLinear",
+          "full_weight_shape": [
+            2048,
+            2816
+          ],
+          "tp_weight_shape": [
+            2048,
+            2816
+          ],
+          "partition": {
+            "dim": 0,
+            "strategy": "row_parallel",
+            "details": "Shared experts down: row-parallel."
+          },
+          "comm_after": null,
+          "sub_components": null
+        },
+        {
+          "name": "moe_output_reduce",
+          "op_type": "comm",
+          "linear_type": null,
+          "full_weight_shape": [
+            0,
+            0
+          ],
+          "tp_weight_shape": [
+            0,
+            0
+          ],
+          "partition": null,
+          "comm_after": "all_reduce",
+          "sub_components": null
+        }
+      ]
+    },
+    {
+      "layer_id": 25,
+      "layer_type": "moe",
+      "operators": [
+        {
+          "name": "fused_qkv_a_proj_with_mqa",
+          "op_type": "linear",
+          "linear_type": "ReplicatedLinear",
+          "full_weight_shape": [
+            2112,
+            2048
+          ],
+          "tp_weight_shape": [
+            2112,
+            2048
+          ],
+          "partition": {
+            "dim": -1,
+            "strategy": "replicated",
+            "details": "Replicated: projects to small latent space (q_lora=1536 + kv_lora=512 + rope=64). Not worth sharding."
+          },
+          "comm_after": null,
+          "sub_components": [
+            "q_a_proj",
+            "kv_a_proj_with_mqa"
+          ]
+        },
+        {
+          "name": "q_b_proj",
+          "op_type": "linear",
+          "linear_type": "ColumnParallelLinear",
+          "full_weight_shape": [
+            3072,
+            1536
+          ],
+          "tp_weight_shape": [
+            3072,
+            1536
+          ],
+          "partition": {
+            "dim": 1,
+            "strategy": "column_parallel",
+            "details": "Column-parallel: expands latent q (1536) to 16 heads × 192 dim. Split by heads."
+          },
+          "comm_after": null,
+          "sub_components": null
+        },
+        {
+          "name": "kv_b_proj",
+          "op_type": "linear",
+          "linear_type": "ColumnParallelLinear",
+          "full_weight_shape": [
+            4096,
+            512
+          ],
+          "tp_weight_shape": [
+            4096,
+            512
+          ],
+          "partition": {
+            "dim": 1,
+            "strategy": "column_parallel",
+            "details": "Column-parallel: expands KV latent (512) to 16 heads × (128 + 128) dim."
+          },
+          "comm_after": null,
+          "sub_components": null
+        },
+        {
+          "name": "o_proj",
+          "op_type": "linear",
+          "linear_type": "RowParallelLinear",
+          "full_weight_shape": [
+            2048,
+            2048
+          ],
+          "tp_weight_shape": [
+            2048,
+            2048
+          ],
+          "partition": {
+            "dim": 0,
+            "strategy": "row_parallel",
+            "details": "Row-parallel: input 2048 split by heads across ranks."
+          },
+          "comm_after": "all_reduce",
+          "sub_components": null
+        },
+        {
+          "name": "gate",
+          "op_type": "moe_gate",
+          "linear_type": "ReplicatedLinear",
+          "full_weight_shape": [
+            64,
+            2048
+          ],
+          "tp_weight_shape": [
+            64,
+            2048
+          ],
+          "partition": {
+            "dim": -1,
+            "strategy": "replicated",
+            "details": "Router: 64 experts. Replicated across all ranks."
+          },
+          "comm_after": null,
+          "sub_components": null
+        },
+        {
+          "name": "experts_gate_up",
+          "op_type": "linear",
+          "linear_type": "MergedColumnParallelLinear",
+          "full_weight_shape": [
+            64,
+            2816,
+            2048
+          ],
+          "tp_weight_shape": [
+            64,
+            2816,
+            2048
+          ],
+          "partition": {
+            "dim": 1,
+            "strategy": "column_parallel",
+            "details": "64 experts, each gate+up [2816, 2048]. moe_inter dimension split by tp."
+          },
+          "comm_after": null,
+          "sub_components": [
+            "w1 (gate)",
+            "w3 (up)"
+          ]
+        },
+        {
+          "name": "experts_down",
+          "op_type": "linear",
+          "linear_type": "RowParallelLinear",
+          "full_weight_shape": [
+            64,
+            2048,
+            1408
+          ],
+          "tp_weight_shape": [
+            64,
+            2048,
+            1408
+          ],
+          "partition": {
+            "dim": 0,
+            "strategy": "row_parallel",
+            "details": "64 experts, each down [2048, 1408]. Input dim (moe_inter) split by tp."
+          },
+          "comm_after": null,
+          "sub_components": [
+            "w2 (down)"
+          ]
+        },
+        {
+          "name": "shared_experts_gate_up",
+          "op_type": "linear",
+          "linear_type": "MergedColumnParallelLinear",
+          "full_weight_shape": [
+            5632,
+            2048
+          ],
+          "tp_weight_shape": [
+            5632,
+            2048
+          ],
+          "partition": {
+            "dim": 1,
+            "strategy": "merged_column_parallel",
+            "details": "Shared experts (2): gate+up fused, column-split."
+          },
+          "comm_after": null,
+          "sub_components": [
+            "shared_gate_proj",
+            "shared_up_proj"
+          ]
+        },
+        {
+          "name": "shared_experts_down",
+          "op_type": "linear",
+          "linear_type": "RowParallelLinear",
+          "full_weight_shape": [
+            2048,
+            2816
+          ],
+          "tp_weight_shape": [
+            2048,
+            2816
+          ],
+          "partition": {
+            "dim": 0,
+            "strategy": "row_parallel",
+            "details": "Shared experts down: row-parallel."
+          },
+          "comm_after": null,
+          "sub_components": null
+        },
+        {
+          "name": "moe_output_reduce",
+          "op_type": "comm",
+          "linear_type": null,
+          "full_weight_shape": [
+            0,
+            0
+          ],
+          "tp_weight_shape": [
+            0,
+            0
+          ],
+          "partition": null,
+          "comm_after": "all_reduce",
+          "sub_components": null
+        }
+      ]
+    },
+    {
+      "layer_id": 26,
+      "layer_type": "moe",
+      "operators": [
+        {
+          "name": "fused_qkv_a_proj_with_mqa",
+          "op_type": "linear",
+          "linear_type": "ReplicatedLinear",
+          "full_weight_shape": [
+            2112,
+            2048
+          ],
+          "tp_weight_shape": [
+            2112,
+            2048
+          ],
+          "partition": {
+            "dim": -1,
+            "strategy": "replicated",
+            "details": "Replicated: projects to small latent space (q_lora=1536 + kv_lora=512 + rope=64). Not worth sharding."
+          },
+          "comm_after": null,
+          "sub_components": [
+            "q_a_proj",
+            "kv_a_proj_with_mqa"
+          ]
+        },
+        {
+          "name": "q_b_proj",
+          "op_type": "linear",
+          "linear_type": "ColumnParallelLinear",
+          "full_weight_shape": [
+            3072,
+            1536
+          ],
+          "tp_weight_shape": [
+            3072,
+            1536
+          ],
+          "partition": {
+            "dim": 1,
+            "strategy": "column_parallel",
+            "details": "Column-parallel: expands latent q (1536) to 16 heads × 192 dim. Split by heads."
+          },
+          "comm_after": null,
+          "sub_components": null
+        },
+        {
+          "name": "kv_b_proj",
+          "op_type": "linear",
+          "linear_type": "ColumnParallelLinear",
+          "full_weight_shape": [
+            4096,
+            512
+          ],
+          "tp_weight_shape": [
+            4096,
+            512
+          ],
+          "partition": {
+            "dim": 1,
+            "strategy": "column_parallel",
+            "details": "Column-parallel: expands KV latent (512) to 16 heads × (128 + 128) dim."
+          },
+          "comm_after": null,
+          "sub_components": null
+        },
+        {
+          "name": "o_proj",
+          "op_type": "linear",
+          "linear_type": "RowParallelLinear",
+          "full_weight_shape": [
+            2048,
+            2048
+          ],
+          "tp_weight_shape": [
+            2048,
+            2048
+          ],
+          "partition": {
+            "dim": 0,
+            "strategy": "row_parallel",
+            "details": "Row-parallel: input 2048 split by heads across ranks."
+          },
+          "comm_after": "all_reduce",
+          "sub_components": null
+        },
+        {
+          "name": "gate",
+          "op_type": "moe_gate",
+          "linear_type": "ReplicatedLinear",
+          "full_weight_shape": [
+            64,
+            2048
+          ],
+          "tp_weight_shape": [
+            64,
+            2048
+          ],
+          "partition": {
+            "dim": -1,
+            "strategy": "replicated",
+            "details": "Router: 64 experts. Replicated across all ranks."
+          },
+          "comm_after": null,
+          "sub_components": null
+        },
+        {
+          "name": "experts_gate_up",
+          "op_type": "linear",
+          "linear_type": "MergedColumnParallelLinear",
+          "full_weight_shape": [
+            64,
+            2816,
+            2048
+          ],
+          "tp_weight_shape": [
+            64,
+            2816,
+            2048
+          ],
+          "partition": {
+            "dim": 1,
+            "strategy": "column_parallel",
+            "details": "64 experts, each gate+up [2816, 2048]. moe_inter dimension split by tp."
+          },
+          "comm_after": null,
+          "sub_components": [
+            "w1 (gate)",
+            "w3 (up)"
+          ]
+        },
+        {
+          "name": "experts_down",
+          "op_type": "linear",
+          "linear_type": "RowParallelLinear",
+          "full_weight_shape": [
+            64,
+            2048,
+            1408
+          ],
+          "tp_weight_shape": [
+            64,
+            2048,
+            1408
+          ],
+          "partition": {
+            "dim": 0,
+            "strategy": "row_parallel",
+            "details": "64 experts, each down [2048, 1408]. Input dim (moe_inter) split by tp."
+          },
+          "comm_after": null,
+          "sub_components": [
+            "w2 (down)"
+          ]
+        },
+        {
+          "name": "shared_experts_gate_up",
+          "op_type": "linear",
+          "linear_type": "MergedColumnParallelLinear",
+          "full_weight_shape": [
+            5632,
+            2048
+          ],
+          "tp_weight_shape": [
+            5632,
+            2048
+          ],
+          "partition": {
+            "dim": 1,
+            "strategy": "merged_column_parallel",
+            "details": "Shared experts (2): gate+up fused, column-split."
+          },
+          "comm_after": null,
+          "sub_components": [
+            "shared_gate_proj",
+            "shared_up_proj"
+          ]
+        },
+        {
+          "name": "shared_experts_down",
+          "op_type": "linear",
+          "linear_type": "RowParallelLinear",
+          "full_weight_shape": [
+            2048,
+            2816
+          ],
+          "tp_weight_shape": [
+            2048,
+            2816
+          ],
+          "partition": {
+            "dim": 0,
+            "strategy": "row_parallel",
+            "details": "Shared experts down: row-parallel."
+          },
+          "comm_after": null,
+          "sub_components": null
+        },
+        {
+          "name": "moe_output_reduce",
+          "op_type": "comm",
+          "linear_type": null,
+          "full_weight_shape": [
+            0,
+            0
+          ],
+          "tp_weight_shape": [
+            0,
+            0
+          ],
+          "partition": null,
+          "comm_after": "all_reduce",
+          "sub_components": null
+        }
+      ]
+    }
+  ],
+  "communication_summary": {
+    "ops_per_layer": 2,
+    "total_ops": 55
+  }
+}

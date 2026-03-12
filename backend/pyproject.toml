@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sglang-tp-viz"
+version = "0.1.0"
+description = "Visualize tensor parallelism strategies for SGLang-supported models"
+requires-python = ">=3.10"
+dependencies = [
+    "huggingface_hub>=0.20.0",
+    "pydantic>=2.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=7.0"]
+
+[project.scripts]
+sglang-tp-viz = "sglang_tp_viz.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["sglang_tp_viz*"]
