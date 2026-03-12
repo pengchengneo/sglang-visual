@@ -97,13 +97,18 @@ export function ParallelismControls({
               </button>
             );
           })}
+        </div>
+      </div>
+      <div className="parallelism-row">
+        <span className="parallelism-label" />
+        <div className="parallelism-buttons">
           <label className="param-toggle" title="Enable DP Attention (dp_attention)">
             <input
               type="checkbox"
               checked={enableDpAttention}
               onChange={(e) => handleDpAttentionToggle(e.target.checked)}
             />
-            <span className="param-toggle-text">dp_attn</span>
+            <span className="param-toggle-text">enable dp_attention</span>
           </label>
         </div>
       </div>

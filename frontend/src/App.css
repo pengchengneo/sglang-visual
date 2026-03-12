@@ -169,6 +169,7 @@
   align-items: center;
   gap: 4px;
   flex: 1;
+  flex-wrap: wrap;
 }
 .coming-soon {
   font-size: 10px;
