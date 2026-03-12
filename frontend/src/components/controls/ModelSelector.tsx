@@ -4,13 +4,14 @@ interface Props {
   manifest: PresetManifestEntry[];
   selected: string | null;
   onSelect: (id: string) => void;
+  vertical?: boolean;
 }
 
-export function ModelSelector({ manifest, selected, onSelect }: Props) {
+export function ModelSelector({ manifest, selected, onSelect, vertical }: Props) {
   return (
     <div className="model-selector">
-      <label>Model</label>
-      <div className="selector-buttons">
+      {!vertical && <label>Model</label>}
+      <div className={`selector-buttons${vertical ? " selector-buttons-vertical" : ""}`}>
         {manifest.map((entry) => (
           <button
             key={entry.id}
