@@ -4,8 +4,7 @@ import {
   formatParams,
   formatMemory,
   shapeToParams,
-  recomputeOperatorTpShape,
-  recomputeEmbeddingTpShape,
+  computePerRankParams,
 } from "../../utils/tpMath";
 import { ArchitectureDiagram } from "../architecture/ArchitectureDiagram";
 
@@ -77,24 +76,6 @@ function computeTotalParams(model: ModelArchitecture): number {
     for (const op of layer.operators) {
       if (op.op_type !== "comm") {
         total += shapeToParams(op.full_weight_shape);
-      }
-    }
-  }
-  return total;
-}
-
-function computePerRankParams(
-  model: ModelArchitecture,
-  tp: number,
-): number {
-  let total = 0;
-  total += shapeToParams(recomputeEmbeddingTpShape(model.embedding, tp));
-  total += shapeToParams(recomputeEmbeddingTpShape(model.lm_head, tp));
-  for (const layer of model.layers) {
-    for (const op of layer.operators) {
-      if (op.op_type !== "comm") {
-        const tpShape = recomputeOperatorTpShape(op, model.config, tp);
-        total += shapeToParams(tpShape);
       }
     }
   }

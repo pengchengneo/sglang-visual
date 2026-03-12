@@ -5,7 +5,7 @@
  * recalculate shapes when the user changes TP size — no backend needed.
  */
 
-import type { Operator, ModelConfig, Layer, EmbeddingInfo } from "../types/model";
+import type { Operator, ModelConfig, Layer, EmbeddingInfo, ModelArchitecture } from "../types/model";
 
 /** Recalculate a single operator's TP weight shape. */
 export function recomputeOperatorTpShape(
@@ -161,4 +161,23 @@ export const RANK_COLORS = [
 
 export function getRankColor(rank: number): string {
   return RANK_COLORS[rank % RANK_COLORS.length];
+}
+
+/** Compute total parameters per rank after TP partitioning. */
+export function computePerRankParams(
+  model: ModelArchitecture,
+  tp: number,
+): number {
+  let total = 0;
+  total += shapeToParams(recomputeEmbeddingTpShape(model.embedding, tp));
+  total += shapeToParams(recomputeEmbeddingTpShape(model.lm_head, tp));
+  for (const layer of model.layers) {
+    for (const op of layer.operators) {
+      if (op.op_type !== "comm") {
+        const tpShape = recomputeOperatorTpShape(op, model.config, tp);
+        total += shapeToParams(tpShape);
+      }
+    }
+  }
+  return total;
 }

@@ -1,20 +1,33 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useManifest, useModelData } from "./hooks/useModelData";
 import { ModelSelector } from "./components/controls/ModelSelector";
 import { TpSizeSelector } from "./components/controls/TpSizeSelector";
+import { GpuControls } from "./components/controls/GpuControls";
 import { PipelineView } from "./components/pipeline/PipelineView";
+import { GpuMemoryPanel } from "./components/gpu/GpuMemoryPanel";
+import { computePerRankParams } from "./utils/tpMath";
 import "./App.css";
+
+const DEFAULT_GPU_BYTES = 80e9; // 80 GB
+const DEFAULT_MEM_FRACTION = 0.88;
 
 function App() {
   const { manifest, loading: manifestLoading } = useManifest();
   const [selectedPreset, setSelectedPreset] = useState<string | null>(null);
   const { model, loading: modelLoading } = useModelData(selectedPreset);
   const [tpSize, setTpSize] = useState(1);
+  const [gpuMemoryBytes, setGpuMemoryBytes] = useState(DEFAULT_GPU_BYTES);
+  const [memFractionStatic, setMemFractionStatic] = useState(DEFAULT_MEM_FRACTION);
 
   const handleModelSelect = (id: string) => {
     setSelectedPreset(id);
     setTpSize(1);
   };
+
+  const perRankParams = useMemo(
+    () => (model ? computePerRankParams(model, tpSize) : 0),
+    [model, tpSize],
+  );
 
   return (
     <div className="app">
@@ -42,17 +55,36 @@ function App() {
           selected={tpSize}
           onSelect={setTpSize}
         />
+        <GpuControls
+          gpuMemoryBytes={gpuMemoryBytes}
+          onGpuMemoryChange={setGpuMemoryBytes}
+          memFractionStatic={memFractionStatic}
+          onMemFractionChange={setMemFractionStatic}
+        />
       </div>
 
       <main className="main-content">
         {modelLoading && <div className="loading">Loading model data...</div>}
 
         {model && (
-          <PipelineView
-            key={model.model_id}
-            model={model}
-            tpSize={tpSize}
-          />
+          <div className="split-layout">
+            <div className="panel-left">
+              <PipelineView
+                key={model.model_id}
+                model={model}
+                tpSize={tpSize}
+              />
+            </div>
+            <div className="panel-right">
+              <GpuMemoryPanel
+                config={model.config}
+                tpSize={tpSize}
+                perRankParams={perRankParams}
+                gpuMemoryBytes={gpuMemoryBytes}
+                memFractionStatic={memFractionStatic}
+              />
+            </div>
+          </div>
         )}
 
         {!model && !modelLoading && !manifestLoading && (
