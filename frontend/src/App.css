@@ -16,6 +16,7 @@
   flex-shrink: 0;
   background: var(--bg-card);
   border-right: 1px solid var(--border);
+  box-shadow: 2px 0 8px rgba(0, 0, 0, 0.02);
   overflow-y: auto;
   overflow-x: hidden;
   transition: width 0.25s ease, opacity 0.25s ease;
@@ -24,6 +25,7 @@
   /* offset the #root padding so sidebar is flush */
   margin: -20px 0 -20px -32px;
   padding-bottom: 20px;
+  z-index: 10;
 }
 .sidebar-collapsed {
   width: 0;
@@ -114,7 +116,7 @@
   align-items: center;
   justify-content: space-between;
   width: 100%;
-  padding: 10px 16px;
+  padding: 14px 16px;
   background: none;
   border: none;
   cursor: pointer;
@@ -142,7 +144,7 @@
   max-height: 1200px;
 }
 .sidebar-section-content {
-  padding: 4px 16px 14px;
+  padding: 4px 16px 20px;
 }
 
 /* ── Parallelism Controls ── */
@@ -234,7 +236,7 @@
   box-shadow: var(--shadow-md);
 }
 .selector-btn.active {
-  background: var(--accent-dim);
+  background: #eef2ff; /* Light indigo background */
   border-color: var(--accent);
   color: var(--accent);
   box-shadow: 0 0 0 1px var(--accent);
@@ -854,23 +856,31 @@
 .v-connector-line {
   width: 2px;
   height: 22px;
-  background: #c9cdd3;
+  background: linear-gradient(to bottom, #a1a6b0 50%, transparent 50%);
+  background-size: 100% 8px;
+  animation: flowDown 1.5s linear infinite;
 }
 .v-connector-head {
   width: 0;
   height: 0;
-  border-left: 4px solid transparent;
-  border-right: 4px solid transparent;
-  border-top: 5px solid #c9cdd3;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-top: 6px solid #a1a6b0;
 }
 .v-connector-label {
   font-size: 10px;
-  color: #9ca3af;
+  color: #6b7280;
   position: absolute;
   left: calc(50% + 14px);
   top: 50%;
   transform: translateY(-50%);
   white-space: nowrap;
+  font-weight: 500;
+}
+
+@keyframes flowDown {
+  0% { background-position: 0 0; }
+  100% { background-position: 0 8px; }
 }
 
 /* ── Horizontal Connector ── */
@@ -882,14 +892,14 @@
 .h-connector-line {
   width: 14px;
   height: 2px;
-  background: #c9cdd3;
+  background: #a1a6b0;
 }
 .h-connector-head {
   width: 0;
   height: 0;
-  border-top: 4px solid transparent;
-  border-bottom: 4px solid transparent;
-  border-left: 5px solid #c9cdd3;
+  border-top: 5px solid transparent;
+  border-bottom: 5px solid transparent;
+  border-left: 6px solid #a1a6b0;
 }
 
 /* ── Section Box ── */
@@ -1219,7 +1229,7 @@
   -webkit-backdrop-filter: blur(14px);
   border: 1px solid var(--border);
   border-radius: 16px;
-  box-shadow: 0 6px 28px rgba(0, 0, 0, 0.12), 0 2px 6px rgba(0, 0, 0, 0.06);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08), 0 1px 4px rgba(0, 0, 0, 0.04);
 }
 .tab-btn {
   background: transparent;
@@ -1375,6 +1385,33 @@
   border-radius: var(--radius);
   overflow: hidden;
   box-shadow: var(--shadow-sm);
+  position: relative;
+}
+.stacked-card-effect {
+  margin-bottom: 8px; /* space for the pseudo elements */
+}
+.stacked-card-effect::before,
+.stacked-card-effect::after {
+  content: "";
+  position: absolute;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  z-index: -1;
+}
+.stacked-card-effect::before {
+  top: 4px;
+  left: 4px;
+  right: -4px;
+  bottom: -4px;
+  opacity: 0.6;
+}
+.stacked-card-effect::after {
+  top: 8px;
+  left: 8px;
+  right: -8px;
+  bottom: -8px;
+  opacity: 0.3;
 }
 .gpu-breakdown-title {
   display: flex;
@@ -1508,6 +1545,37 @@
 /* ── Grayed-out block in control plane ── */
 .cp-block-disabled {
   opacity: 0.4;
+}
+
+/* ── Horizontal CPU Header ── */
+.cp-cpu-header {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  width: 100%;
+  margin-bottom: 24px;
+}
+.cp-cpu-header .v-connector {
+  transform: rotate(-90deg);
+  margin: 0;
+  padding: 0;
+}
+.cp-cpu-header .v-connector-label {
+  transform: translateY(-50%) rotate(90deg);
+  top: -15px;
+  left: 50%;
+}
+.cp-cpu-header .cp-block {
+  max-width: 240px;
+  padding: 10px 16px;
+}
+.cp-cpu-header .cp-block-name {
+  font-size: 13px;
+}
+.cp-cpu-header .cp-block-sub {
+  font-size: 10px;
 }
 
 /* ── Context comparison in GPU panel ── */

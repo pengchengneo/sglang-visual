@@ -149,14 +149,14 @@ export function computeMlaTpShapes(
 
 /** Get rank colors for visualization. */
 export const RANK_COLORS = [
-  "#818cf8", // indigo-400
-  "#f87171", // red-400
-  "#fbbf24", // amber-400
-  "#34d399", // emerald-400
-  "#fb923c", // orange-400
-  "#22d3ee", // cyan-400
   "#a5b4fc", // indigo-300
   "#fca5a5", // red-300
+  "#fcd34d", // amber-300
+  "#6ee7b7", // emerald-300
+  "#fdba74", // orange-300
+  "#67e8f9", // cyan-300
+  "#c4b5fd", // purple-300
+  "#f9a8d4", // pink-300
 ];
 
 export function getRankColor(rank: number): string {
