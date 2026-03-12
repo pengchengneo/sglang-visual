@@ -3,8 +3,10 @@ import { useManifest, useModelData } from "./hooks/useModelData";
 import { ModelSelector } from "./components/controls/ModelSelector";
 import { TpSizeSelector } from "./components/controls/TpSizeSelector";
 import { GpuControls } from "./components/controls/GpuControls";
+import { PlaneTabBar, type Plane } from "./components/controls/PlaneTabBar";
 import { PipelineView } from "./components/pipeline/PipelineView";
 import { GpuMemoryPanel } from "./components/gpu/GpuMemoryPanel";
+import { ControlPlaneView } from "./components/controlplane/ControlPlaneView";
 import { computePerRankParams } from "./utils/tpMath";
 import "./App.css";
 
@@ -18,6 +20,7 @@ function App() {
   const [tpSize, setTpSize] = useState(1);
   const [gpuMemoryBytes, setGpuMemoryBytes] = useState(DEFAULT_GPU_BYTES);
   const [memFractionStatic, setMemFractionStatic] = useState(DEFAULT_MEM_FRACTION);
+  const [activePlane, setActivePlane] = useState<Plane>("compute");
 
   const handleModelSelect = (id: string) => {
     setSelectedPreset(id);
@@ -33,9 +36,9 @@ function App() {
     <div className="app">
       <header className="app-header">
         <div className="app-header-left">
-          <h1>SGLang TP Visualizer</h1>
+          <h1>SGLang Visualizer</h1>
           <span className="subtitle">
-            Tensor parallelism weight partitioning across GPUs
+            Inference optimization visualizer for SGLang
           </span>
         </div>
       </header>
@@ -55,42 +58,58 @@ function App() {
           selected={tpSize}
           onSelect={setTpSize}
         />
-        <GpuControls
-          gpuMemoryBytes={gpuMemoryBytes}
-          onGpuMemoryChange={setGpuMemoryBytes}
-          memFractionStatic={memFractionStatic}
-          onMemFractionChange={setMemFractionStatic}
-        />
+        {activePlane === "compute" && (
+          <GpuControls
+            gpuMemoryBytes={gpuMemoryBytes}
+            onGpuMemoryChange={setGpuMemoryBytes}
+            memFractionStatic={memFractionStatic}
+            onMemFractionChange={setMemFractionStatic}
+          />
+        )}
       </div>
 
-      <main className="main-content">
-        {modelLoading && <div className="loading">Loading model data...</div>}
+      <PlaneTabBar active={activePlane} onChange={setActivePlane} />
 
-        {model && (
-          <div className="split-layout">
-            <div className="panel-left">
-              <PipelineView
-                key={model.model_id}
-                model={model}
-                tpSize={tpSize}
-              />
-            </div>
-            <div className="panel-right">
-              <GpuMemoryPanel
-                config={model.config}
-                tpSize={tpSize}
-                perRankParams={perRankParams}
-                gpuMemoryBytes={gpuMemoryBytes}
-                memFractionStatic={memFractionStatic}
-              />
-            </div>
-          </div>
+      <main className="main-content">
+        {activePlane === "compute" && (
+          <>
+            {modelLoading && (
+              <div className="loading">Loading model data...</div>
+            )}
+
+            {model && (
+              <div className="split-layout">
+                <div className="panel-left">
+                  <PipelineView
+                    key={model.model_id}
+                    model={model}
+                    tpSize={tpSize}
+                  />
+                </div>
+                <div className="panel-right">
+                  <GpuMemoryPanel
+                    config={model.config}
+                    tpSize={tpSize}
+                    perRankParams={perRankParams}
+                    gpuMemoryBytes={gpuMemoryBytes}
+                    memFractionStatic={memFractionStatic}
+                  />
+                </div>
+              </div>
+            )}
+
+            {!model && !modelLoading && !manifestLoading && (
+              <div className="empty-state">
+                <p>
+                  Select a model above to explore its tensor parallelism layout.
+                </p>
+              </div>
+            )}
+          </>
         )}
 
-        {!model && !modelLoading && !manifestLoading && (
-          <div className="empty-state">
-            <p>Select a model above to explore its tensor parallelism layout.</p>
-          </div>
+        {activePlane === "control" && (
+          <ControlPlaneView tpSize={tpSize} />
         )}
       </main>
     </div>
