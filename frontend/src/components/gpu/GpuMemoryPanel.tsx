@@ -64,6 +64,7 @@ export function GpuMemoryPanel({
 
   return (
     <div className="gpu-memory-panel">
+      {/* Panel header */}
       <div className="gpu-panel-header">
         <h3 className="gpu-panel-title">GPU Memory</h3>
         <div className="gpu-summary-stats">
@@ -174,28 +175,52 @@ export function GpuMemoryPanel({
         </div>
       )}
 
-      {/* GPU Cards */}
+      {/* Shared Per-GPU Breakdown (rendered once) */}
+      <GpuCard
+        breakdown={breakdown}
+        kvSlots={kvSlots}
+        kvPerToken={kvPerToken}
+      />
+
+      {/* GPU Chip Grid */}
       {useDpAttn ? (
-        <div className="dp-groups-container">
-          {Array.from({ length: dpSize }, (_, dpRank) => (
-            <div key={dpRank} className="dp-group">
-              <div className="dp-group-header">DP Attention Group {dpRank}</div>
-              <div className="gpu-cards">
-                {Array.from({ length: attnTpSize }, (_, tpRank) => {
-                  const globalGpuId = dpRank * attnTpSize + tpRank;
+        <div className="gpu-chip-groups">
+          {Array.from({ length: dpSize }, (_, d) => (
+            <div key={d} className="gpu-chip-group">
+              <div className="gpu-chip-group-title">DP Group {d}</div>
+              <div className="gpu-chip-grid">
+                {Array.from({ length: attnTpSize }, (_, t) => {
+                  const gpuId = d * attnTpSize + t;
                   return (
-                    <GpuCard
-                      key={globalGpuId}
-                      rank={tpRank}
-                      color={getRankColor(globalGpuId)}
-                      breakdown={breakdown}
-                      kvSlots={kvSlots}
-                      kvPerToken={kvPerToken}
-                      dpRank={dpRank}
-                      tpRank={tpRank}
-                      globalGpuId={globalGpuId}
-                      dpAttention
-                    />
+                    <div
+                      key={gpuId}
+                      className="gpu-chip"
+                      style={{ background: getRankColor(gpuId) }}
+                    >
+                      GPU {gpuId} · attn_dp{d} attn_tp{t}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : ppSize > 1 ? (
+        <div className="gpu-chip-groups">
+          {Array.from({ length: ppSize }, (_, p) => (
+            <div key={p} className="gpu-chip-group">
+              <div className="gpu-chip-group-title">PP Stage {p}</div>
+              <div className="gpu-chip-grid">
+                {Array.from({ length: tpSize }, (_, t) => {
+                  const gpuId = p * tpSize + t;
+                  return (
+                    <div
+                      key={gpuId}
+                      className="gpu-chip"
+                      style={{ background: getRankColor(t) }}
+                    >
+                      GPU {gpuId}
+                    </div>
                   );
                 })}
               </div>
@@ -203,16 +228,15 @@ export function GpuMemoryPanel({
           ))}
         </div>
       ) : (
-        <div className="gpu-cards">
+        <div className="gpu-chip-grid">
           {Array.from({ length: tpSize }, (_, rank) => (
-            <GpuCard
+            <div
               key={rank}
-              rank={rank}
-              color={getRankColor(rank)}
-              breakdown={breakdown}
-              kvSlots={kvSlots}
-              kvPerToken={kvPerToken}
-            />
+              className="gpu-chip"
+              style={{ background: getRankColor(rank) }}
+            >
+              GPU {rank}
+            </div>
           ))}
         </div>
       )}

@@ -2,46 +2,23 @@ import type { GpuBreakdown } from "../../utils/gpuMemoryMath";
 import { formatBytes } from "../../utils/gpuMemoryMath";
 
 interface Props {
-  rank: number;
-  color: string;
   breakdown: GpuBreakdown;
   kvSlots: number;
   kvPerToken: number;
-  dpRank?: number;
-  tpRank?: number;
-  globalGpuId?: number;
-  dpAttention?: boolean;
 }
 
-export function GpuCard({
-  rank,
-  color,
-  breakdown,
-  kvSlots,
-  kvPerToken,
-  dpRank,
-  tpRank,
-  globalGpuId,
-  dpAttention,
-}: Props) {
+export function GpuCard({ breakdown, kvSlots, kvPerToken }: Props) {
   const { totalBytes, weights, kvCache, reserved, oom } = breakdown;
 
   const wPct = (weights / totalBytes) * 100;
   const kvPct = (kvCache / totalBytes) * 100;
   const rPct = (reserved / totalBytes) * 100;
 
-  const hasDP = dpRank !== undefined;
-  const headerLabel = hasDP
-    ? dpAttention
-      ? `GPU ${globalGpuId} · attn_dp${dpRank} attn_tp${tpRank}`
-      : `GPU ${globalGpuId} · DP${dpRank} TP${tpRank}`
-    : `GPU ${rank} (Rank ${rank})`;
-
   return (
-    <div className={`gpu-card${oom ? " gpu-card-oom" : ""}`}>
-      <div className="gpu-card-header" style={{ background: color }}>
-        <span className="gpu-card-rank">{headerLabel}</span>
-        <span className="gpu-card-total">{formatBytes(totalBytes)}</span>
+    <div className={`gpu-breakdown-shared${oom ? " gpu-card-oom" : ""}`}>
+      <div className="gpu-breakdown-title">
+        <span>Per-GPU Breakdown</span>
+        <span className="gpu-breakdown-total">{formatBytes(totalBytes)}</span>
       </div>
 
       {/* Stacked memory bar */}

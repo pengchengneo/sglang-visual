@@ -160,7 +160,7 @@
   font-size: 12px;
   font-weight: 600;
   color: var(--text-secondary);
-  width: 32px;
+  width: 44px;
   flex-shrink: 0;
   font-family: "JetBrains Mono", monospace;
 }
@@ -1081,36 +1081,9 @@
   color: var(--text-secondary);
 }
 
-/* ── GPU Cards ── */
-.gpu-cards {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-.gpu-card {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  overflow: hidden;
-  box-shadow: var(--shadow-sm);
-}
+/* ── GPU Cards (legacy — kept for OOM border) ── */
 .gpu-card-oom {
   border-color: var(--red);
-}
-.gpu-card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 8px 14px;
-  color: #fff;
-  font-size: 12px;
-  font-weight: 600;
-}
-.gpu-card-rank {
-  font-weight: 700;
-}
-.gpu-card-total {
-  opacity: 0.9;
 }
 
 /* ── Memory Bar ── */
@@ -1395,25 +1368,60 @@
   font-size: 11px;
 }
 
-/* ── DP Group Containers (GPU Panel) ── */
-.dp-groups-container {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
+/* ── Shared Per-GPU Breakdown Card ── */
+.gpu-breakdown-shared {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
 }
-.dp-group {
+.gpu-breakdown-title {
   display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-.dp-group-header {
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 14px;
   font-size: 12px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  border-bottom: 1px solid var(--border);
+}
+.gpu-breakdown-total {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+/* ── GPU Chip Grid ── */
+.gpu-chip-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+}
+.gpu-chip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 8px;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #fff;
+  white-space: nowrap;
+}
+.gpu-chip-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.gpu-chip-group-title {
+  font-size: 11px;
   font-weight: 700;
   color: var(--text-secondary);
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  padding-bottom: 4px;
-  border-bottom: 1px solid var(--border);
+  margin-bottom: 4px;
 }
 
 /* ── Control Plane DP Fan-out ── */

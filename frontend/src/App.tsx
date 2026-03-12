@@ -167,7 +167,7 @@ function App() {
               {!model && !modelLoading && !manifestLoading && (
                 <div className="empty-state">
                   <p>
-                    Select a model to explore its tensor parallelism layout.
+                    Select a model to explore inference optimizations.
                   </p>
                 </div>
               )}
