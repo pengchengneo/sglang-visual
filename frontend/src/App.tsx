@@ -16,6 +16,7 @@ function App() {
   const [selectedPreset, setSelectedPreset] = useState<string | null>(null);
   const { model, loading: modelLoading } = useModelData(selectedPreset);
   const [tpSize, setTpSize] = useState(1);
+  const [dpSize, setDpSize] = useState(1);
   const [gpuMemoryBytes, setGpuMemoryBytes] = useState(DEFAULT_GPU_BYTES);
   const [memFractionStatic, setMemFractionStatic] = useState(DEFAULT_MEM_FRACTION);
   const [activePlane, setActivePlane] = useState<Plane>("compute");
@@ -42,6 +43,8 @@ function App() {
           manifestLoading={manifestLoading}
           tpSize={tpSize}
           onTpSizeChange={setTpSize}
+          dpSize={dpSize}
+          onDpSizeChange={setDpSize}
           modelConfig={model?.config ?? null}
           activePlane={activePlane}
           gpuMemoryBytes={gpuMemoryBytes}
@@ -70,6 +73,7 @@ function App() {
                     <GpuMemoryPanel
                       config={model.config}
                       tpSize={tpSize}
+                      dpSize={dpSize}
                       perRankParams={perRankParams}
                       gpuMemoryBytes={gpuMemoryBytes}
                       memFractionStatic={memFractionStatic}
@@ -89,7 +93,7 @@ function App() {
           )}
 
           {activePlane === "control" && (
-            <ControlPlaneView tpSize={tpSize} />
+            <ControlPlaneView tpSize={tpSize} dpSize={dpSize} />
           )}
         </main>
       </div>

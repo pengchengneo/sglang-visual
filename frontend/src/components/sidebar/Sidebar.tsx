@@ -13,6 +13,8 @@ interface Props {
   manifestLoading: boolean;
   tpSize: number;
   onTpSizeChange: (tp: number) => void;
+  dpSize: number;
+  onDpSizeChange: (dp: number) => void;
   modelConfig: ModelConfig | null;
   activePlane: Plane;
   gpuMemoryBytes: number;
@@ -30,6 +32,8 @@ export function Sidebar({
   manifestLoading,
   tpSize,
   onTpSizeChange,
+  dpSize,
+  onDpSizeChange,
   modelConfig,
   activePlane,
   gpuMemoryBytes,
@@ -94,6 +98,8 @@ export function Sidebar({
             config={modelConfig}
             tpSize={tpSize}
             onTpSizeChange={onTpSizeChange}
+            dpSize={dpSize}
+            onDpSizeChange={onDpSizeChange}
           />
         </SidebarSection>
 

@@ -1332,3 +1332,124 @@
   opacity: 0.6;
   margin-top: 2px;
 }
+
+/* ── Total GPUs Summary Row ── */
+.total-gpus-row {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+  margin-top: 4px;
+  font-family: "JetBrains Mono", monospace;
+}
+
+/* ── GPU Topology Grid ── */
+.gpu-topology-grid {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  box-shadow: var(--shadow-sm);
+}
+.gpu-topology-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 8px;
+}
+.gpu-topology-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 11px;
+}
+.gpu-topology-table th {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  padding: 2px 4px 6px;
+  text-align: center;
+}
+.gpu-topology-table td {
+  text-align: center;
+  padding: 3px 4px;
+}
+.gpu-topology-row-label {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-align: right !important;
+  padding-right: 8px !important;
+}
+.gpu-topology-cell {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 24px;
+  border-radius: 5px;
+  color: #fff;
+  font-weight: 700;
+  font-size: 11px;
+}
+
+/* ── DP Group Containers (GPU Panel) ── */
+.dp-groups-container {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.dp-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.dp-group-header {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--border);
+}
+
+/* ── Control Plane DP Fan-out ── */
+.cp-dp-fan-out {
+  display: flex;
+  flex-direction: row;
+  gap: 16px;
+  justify-content: center;
+  flex-wrap: wrap;
+  width: 100%;
+}
+.cp-dp-group {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+  border: 2px solid var(--border);
+  border-radius: 14px;
+  padding: 16px 12px;
+  min-width: 240px;
+  flex: 1;
+  max-width: 460px;
+  background: rgba(0, 0, 0, 0.01);
+}
+.cp-dp-group-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+/* Narrower cp-block inside DP groups */
+.cp-dp-group .cp-block {
+  max-width: 280px;
+}
+.cp-dp-group .cp-section {
+  max-width: 320px;
+}

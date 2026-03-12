@@ -7,6 +7,9 @@ interface Props {
   breakdown: GpuBreakdown;
   kvSlots: number;
   kvPerToken: number;
+  dpRank?: number;
+  tpRank?: number;
+  globalGpuId?: number;
 }
 
 export function GpuCard({
@@ -15,6 +18,9 @@ export function GpuCard({
   breakdown,
   kvSlots,
   kvPerToken,
+  dpRank,
+  tpRank,
+  globalGpuId,
 }: Props) {
   const { totalBytes, weights, kvCache, reserved, oom } = breakdown;
 
@@ -22,10 +28,15 @@ export function GpuCard({
   const kvPct = (kvCache / totalBytes) * 100;
   const rPct = (reserved / totalBytes) * 100;
 
+  const hasDP = dpRank !== undefined;
+  const headerLabel = hasDP
+    ? `GPU ${globalGpuId} · DP${dpRank} TP${tpRank}`
+    : `GPU ${rank} (Rank ${rank})`;
+
   return (
     <div className={`gpu-card${oom ? " gpu-card-oom" : ""}`}>
       <div className="gpu-card-header" style={{ background: color }}>
-        <span className="gpu-card-rank">GPU {rank} (Rank {rank})</span>
+        <span className="gpu-card-rank">{headerLabel}</span>
         <span className="gpu-card-total">{formatBytes(totalBytes)}</span>
       </div>
 
