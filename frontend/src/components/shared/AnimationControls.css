@@ -1,0 +1,32 @@
+.anim-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+.anim-label { font-size: 12px; font-weight: 600; color: var(--text-secondary); white-space: nowrap; }
+.anim-buttons { display: flex; gap: 4px; }
+.anim-btn {
+  width: 32px; height: 32px; border: 1px solid var(--border); border-radius: 6px;
+  background: var(--bg); color: var(--text); font-size: 14px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; transition: all 0.15s;
+}
+.anim-btn:hover { background: var(--bg-hover); }
+.anim-btn-primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+.anim-btn-primary:hover { opacity: 0.9; }
+.anim-speed { display: flex; gap: 2px; background: var(--bg-hover); border-radius: 6px; padding: 2px; }
+.anim-speed-btn {
+  padding: 4px 8px; border: none; border-radius: 4px; background: transparent;
+  color: var(--text-secondary); font-size: 11px; font-weight: 500; cursor: pointer; transition: all 0.15s;
+}
+.anim-speed-btn.active { background: var(--accent); color: #fff; }
+.anim-progress { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0; }
+.anim-slider {
+  flex: 1; height: 4px; -webkit-appearance: none; appearance: none;
+  background: var(--border); border-radius: 2px; outline: none;
+}
+.anim-slider::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%; background: var(--accent); cursor: pointer; }
+.anim-frame-label { font-size: 11px; color: var(--text-secondary); font-variant-numeric: tabular-nums; white-space: nowrap; }
