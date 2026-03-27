@@ -1,5 +1,5 @@
 import type { ModelConfig } from "../../types/model";
-import { isTpCompatible } from "../../utils/tpMath";
+import { isTpCompatible, isEpCompatible } from "../../utils/tpMath";
 
 const TP_OPTIONS = [1, 2, 4, 8];
 const DP_OPTIONS = [1, 2, 4, 8];
@@ -136,15 +136,15 @@ export function ParallelismControls({
           <span className="parallelism-label">EP</span>
           <div className="parallelism-buttons">
             {EP_OPTIONS.map((ep) => {
-              const disabled = ep > (config?.n_routed_experts ?? 0);
+              const compatible = config ? isEpCompatible(config, ep) : ep === 1;
               return (
                 <button
                   key={ep}
                   className={`selector-btn tp-btn${epSize === ep ? " active" : ""}`}
-                  disabled={disabled}
+                  disabled={!compatible}
                   title={
-                    disabled
-                      ? `EP=${ep} exceeds num experts (${config?.n_routed_experts})`
+                    !compatible
+                      ? `EP=${ep}: num_experts (${config?.n_routed_experts}) not divisible by ${ep}`
                       : `EP=${ep}`
                   }
                   onClick={() => onEpSizeChange(ep)}
@@ -182,6 +182,12 @@ export function ParallelismControls({
       {enableDpAttention && dpSize > 1 && (
         <div className="parallelism-sub-info">
           Attn: {dpSize} groups × {attnTpSize} TP
+        </div>
+      )}
+
+      {epSize > 1 && hasMoe && (
+        <div className="parallelism-sub-info">
+          MoE: {config?.n_routed_experts} experts → {Math.floor((config?.n_routed_experts ?? 0) / epSize)} / EP rank
         </div>
       )}
     </div>

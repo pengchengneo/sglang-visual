@@ -6,24 +6,35 @@ import {
   formatMemory,
   shapeToParams,
   computePerRankParams,
+  computePerRankParamsForPpStage,
 } from "../../utils/tpMath";
 import { ArchitectureDiagram } from "../architecture/ArchitectureDiagram";
+import "./Pipeline.css";
 
 interface Props {
   model: ModelArchitecture;
   tpSize: number;
+  ppSize: number;
+  epSize: number;
   bytesPerParam: number;
   dtype: Dtype;
   quantization: Quantization;
 }
 
-export function PipelineView({ model, tpSize, bytesPerParam, dtype, quantization }: Props) {
+export function PipelineView({ model, tpSize, ppSize, epSize, bytesPerParam, dtype, quantization }: Props) {
   const [selectedOpName, setSelectedOpName] = useState<string | null>(null);
 
   const totalParams = useMemo(() => computeTotalParams(model), [model]);
   const perRankParams = useMemo(
-    () => computePerRankParams(model, tpSize),
-    [model, tpSize],
+    () => {
+      if (ppSize <= 1) return computePerRankParams(model, tpSize, epSize);
+      let maxParams = 0;
+      for (let p = 0; p < ppSize; p++) {
+        maxParams = Math.max(maxParams, computePerRankParamsForPpStage(model, tpSize, p, ppSize, epSize));
+      }
+      return maxParams;
+    },
+    [model, tpSize, ppSize, epSize],
   );
   const commOps = useMemo(
     () => computeTotalCommOps(model, tpSize),
@@ -49,7 +60,7 @@ export function PipelineView({ model, tpSize, bytesPerParam, dtype, quantization
         <span className="stat-sep">{"\u00b7"}</span>
         <div className="stat-item">
           <span className="stat-val">{formatParams(perRankParams)}</span>
-          <span className="stat-lbl">/ rank</span>
+          <span className="stat-lbl">/ rank{ppSize > 1 ? " (max)" : ""}</span>
         </div>
         <span className="stat-sep">{"\u00b7"}</span>
         <div className="stat-item">
@@ -67,6 +78,8 @@ export function PipelineView({ model, tpSize, bytesPerParam, dtype, quantization
       <ArchitectureDiagram
         model={model}
         tpSize={tpSize}
+        ppSize={ppSize}
+        epSize={epSize}
         selectedOp={selectedOpName}
         onSelectOp={handleSelectOp}
       />

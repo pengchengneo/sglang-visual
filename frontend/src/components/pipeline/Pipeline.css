@@ -1,0 +1,111 @@
+/* ── Stats Bar ── */
+.stats-bar {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 16px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+  margin-bottom: 16px;
+}
+.stat-item {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+}
+.stat-val {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--accent);
+  font-family: "JetBrains Mono", monospace;
+}
+.stat-lbl {
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+.stat-sep {
+  color: var(--border);
+  font-size: 18px;
+}
+
+/* ── Pipeline ── */
+.pipeline {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  gap: 0;
+  overflow-x: auto;
+  padding: 8px 0 16px;
+  position: relative;
+}
+.pipeline-connector {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 32px;
+  min-height: 40px;
+}
+.pipeline-connector::after {
+  content: "";
+  display: block;
+  width: 32px;
+  height: 2px;
+  background: var(--border);
+}
+.pipeline-group-wrapper {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  flex-shrink: 0;
+}
+
+/* ── Pipeline Stage Block (Embedding / LM Head) ── */
+.pipeline-stage-block {
+  min-width: 140px;
+  max-width: 180px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+  flex-shrink: 0;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+.pipeline-stage-block:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+.stage-color-bar {
+  width: 100%;
+  height: 4px;
+  flex-shrink: 0;
+}
+.stage-content {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 14px;
+  flex: 1;
+}
+.stage-label {
+  font-weight: 600;
+  font-size: 13px;
+}
+.stage-shape {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 11px;
+  color: var(--text-secondary);
+  word-break: break-all;
+}
+.stage-tp-shape {
+  color: var(--accent);
+}
+.stage-params {
+  font-size: 11px;
+  color: var(--text-secondary);
+}

@@ -3,6 +3,7 @@ import type { Operator, ModelConfig } from "../../types/model";
 import { recomputeOperatorTpShape, getRankColor } from "../../utils/tpMath";
 import { getStrategyColor } from "../../utils/layoutMath";
 import { GpuSliceView } from "./GpuSliceView";
+import "./Matrix.css";
 
 interface Props {
   op: Operator;

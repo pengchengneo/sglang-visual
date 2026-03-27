@@ -51,16 +51,18 @@ export function computeKvPerTokenBytes(
   config: ModelConfig,
   tpSize: number,
   kvBytesPerElement = 2,
+  numLayersOverride?: number,
 ): number {
+  const numLayers = numLayersOverride ?? config.num_hidden_layers;
   if (config.kv_lora_rank != null) {
     // MLA: compressed KV is replicated across ranks
     const kvLoraRank = config.kv_lora_rank;
     const qkRopeHeadDim = config.qk_rope_head_dim ?? 64;
-    return config.num_hidden_layers * (kvLoraRank + qkRopeHeadDim) * kvBytesPerElement;
+    return numLayers * (kvLoraRank + qkRopeHeadDim) * kvBytesPerElement;
   }
   // Standard multi-head / grouped-query attention
   const kvHeadsPerRank = Math.floor(config.num_key_value_heads / tpSize);
-  return config.num_hidden_layers * 2 * kvHeadsPerRank * config.head_dim * kvBytesPerElement;
+  return numLayers * 2 * kvHeadsPerRank * config.head_dim * kvBytesPerElement;
 }
 
 /** Compute memory breakdown for a single GPU. */

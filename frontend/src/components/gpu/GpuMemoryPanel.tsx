@@ -9,12 +9,14 @@ import {
   formatBytes,
 } from "../../utils/gpuMemoryMath";
 import { GpuCard } from "./GpuCard";
+import "./GpuMemoryPanel.css";
 
 interface Props {
   config: ModelConfig;
   tpSize: number;
   dpSize: number;
   ppSize: number;
+  epSize: number;
   enableDpAttention: boolean;
   perRankParams: number;
   gpuMemoryBytes: number;
@@ -29,6 +31,7 @@ export function GpuMemoryPanel({
   tpSize,
   dpSize,
   ppSize,
+  epSize,
   enableDpAttention,
   perRankParams,
   gpuMemoryBytes,
@@ -42,9 +45,16 @@ export function GpuMemoryPanel({
     [perRankParams, bytesPerParam],
   );
 
+  const ppMaxLayersPerStage = useMemo(
+    () => ppSize > 1
+      ? Math.ceil(config.num_hidden_layers / ppSize)
+      : config.num_hidden_layers,
+    [config.num_hidden_layers, ppSize],
+  );
+
   const kvPerToken = useMemo(
-    () => computeKvPerTokenBytes(config, tpSize, kvBytesPerElement),
-    [config, tpSize, kvBytesPerElement],
+    () => computeKvPerTokenBytes(config, tpSize, kvBytesPerElement, ppMaxLayersPerStage),
+    [config, tpSize, kvBytesPerElement, ppMaxLayersPerStage],
   );
 
   const breakdown = useMemo(
@@ -172,6 +182,29 @@ export function GpuMemoryPanel({
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {/* EP Info — shown when EP > 1 for MoE models */}
+      {epSize > 1 && config.n_routed_experts != null && (
+        <div className="gpu-topology-grid">
+          <div className="gpu-topology-title">
+            Expert Parallelism (EP={epSize}, TP={tpSize})
+          </div>
+          <div className="ep-info-box">
+            <div className="ep-info-row">
+              <span className="ep-info-label">Total experts:</span>
+              <span className="ep-info-val">{config.n_routed_experts}</span>
+            </div>
+            <div className="ep-info-row">
+              <span className="ep-info-label">Experts per EP rank:</span>
+              <span className="ep-info-val">{Math.floor(config.n_routed_experts / epSize)}</span>
+            </div>
+            <div className="ep-info-row">
+              <span className="ep-info-label">Communication:</span>
+              <span className="ep-info-val">AllToAll (EP groups)</span>
+            </div>
+          </div>
         </div>
       )}
 

@@ -1,0 +1,94 @@
+/* ── Matrix Visualization ── */
+.matrix-viz-container {
+  animation: fadeIn 0.2s ease;
+}
+.matrix-viz {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  margin-top: 12px;
+  box-shadow: var(--shadow-sm);
+}
+.matrix-viz h4 {
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 10px;
+}
+.expert-note {
+  font-weight: 400;
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+.matrix-viz-content {
+  display: flex;
+  align-items: flex-start;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+.matrix-panel {
+  flex-shrink: 0;
+}
+.matrix-panel-title,
+.gpu-slice-title {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+}
+.matrix-viz svg text {
+  fill: var(--text-secondary);
+}
+.partition-rect {
+  transition: all 0.3s ease;
+}
+
+/* Inline rank legend */
+.rank-legend-inline {
+  display: flex;
+  gap: 10px;
+  margin-top: 6px;
+  padding-left: 50px;
+}
+.legend-item-inline {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+.legend-swatch-sm {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  display: inline-block;
+}
+
+/* GPU Slice View */
+.gpu-slice-view {
+  flex-shrink: 0;
+}
+
+/* Strategy description */
+.partition-description {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+.strategy-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 6px;
+  vertical-align: middle;
+}
+.partition-detail-text {
+  opacity: 0.7;
+  font-size: 11px;
+}

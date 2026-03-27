@@ -16,8 +16,12 @@ import {
   getRankColor,
   shapeToParams,
   formatParams,
+  computePpStageRanges,
+  computePerRankParamsForPpStage,
+  type PpStageRange,
 } from "../../utils/tpMath";
 import { getStrategyColor, getStrategyLabel } from "../../utils/layoutMath";
+import "./ArchitectureDiagram.css";
 
 /* ── Block type → visual style ── */
 
@@ -44,6 +48,68 @@ const SECTION_COLORS: Record<
   dense_mlp: { border: "#a78bfa", bg: "rgba(237,233,254,0.15)", label: "#7c3aed" },
 };
 
+/* ── PP Stage colors ── */
+
+const PP_STAGE_COLORS = [
+  { border: "#3b82f6", bg: "rgba(59, 130, 246, 0.04)", label: "#2563eb" },
+  { border: "#8b5cf6", bg: "rgba(139, 92, 246, 0.04)", label: "#7c3aed" },
+  { border: "#ec4899", bg: "rgba(236, 72, 153, 0.04)", label: "#db2777" },
+  { border: "#f97316", bg: "rgba(249, 115, 22, 0.04)", label: "#ea580c" },
+  { border: "#14b8a6", bg: "rgba(20, 184, 166, 0.04)", label: "#0d9488" },
+  { border: "#6366f1", bg: "rgba(99, 102, 241, 0.04)", label: "#4f46e5" },
+  { border: "#84cc16", bg: "rgba(132, 204, 22, 0.04)", label: "#65a30d" },
+  { border: "#ef4444", bg: "rgba(239, 68, 68, 0.04)", label: "#dc2626" },
+];
+
+function getPpStageColor(stage: number) {
+  return PP_STAGE_COLORS[stage % PP_STAGE_COLORS.length];
+}
+
+/* ── PP Stage wrapper box ── */
+
+function PpStageBox({
+  stage,
+  range,
+  paramsLabel,
+  children,
+}: {
+  stage: number;
+  range: PpStageRange;
+  paramsLabel: string;
+  children: React.ReactNode;
+}) {
+  const color = getPpStageColor(stage);
+  const endLayer = range.startLayer + range.numLayers - 1;
+  return (
+    <div
+      className="pp-stage-box"
+      style={{ borderColor: color.border, backgroundColor: color.bg }}
+    >
+      <div className="pp-stage-header">
+        <span className="pp-stage-title" style={{ color: color.label }}>
+          PP Stage {stage}
+        </span>
+        <span className="pp-stage-info" style={{ color: color.label }}>
+          Layers {range.startLayer}–{endLayer} · {paramsLabel}
+        </span>
+      </div>
+      {children}
+    </div>
+  );
+}
+
+/* ── P2P Communication Arrow between PP stages ── */
+
+function P2PArrow() {
+  return (
+    <div className="pp-p2p-arrow">
+      <div className="pp-p2p-line" />
+      <span className="pp-p2p-label">P2P Send → Recv</span>
+      <div className="pp-p2p-head" />
+    </div>
+  );
+}
+
 /* ── Strategy description ── */
 
 function strategyDescription(strategy: string): string {
@@ -69,22 +135,25 @@ function InlineTpViz({
   op,
   config,
   tpSize,
+  epSize,
 }: {
   op: Operator;
   config: ModelConfig;
   tpSize: number;
+  epSize: number;
 }) {
   const strategy = op.partition?.strategy;
   if (
     !strategy ||
     strategy === "replicated" ||
-    tpSize <= 1
+    (tpSize <= 1 && epSize <= 1)
   )
     return null;
 
-  const tpShape = recomputeOperatorTpShape(op, config, tpSize);
+  const isExpert = op.full_weight_shape.length === 3;
+  const effectiveEp = isExpert ? epSize : 1;
+  const tpShape = recomputeOperatorTpShape(op, config, tpSize, effectiveEp);
   const full = op.full_weight_shape;
-  const isExpert = full.length === 3;
   const displayTp = isExpert ? tpShape.slice(1) : tpShape;
   const perRankParams = shapeToParams(tpShape);
 
@@ -103,6 +172,17 @@ function InlineTpViz({
         />
         <span>{strategyDescription(strategy)}</span>
       </div>
+
+      {/* EP info for expert operators */}
+      {isExpert && epSize > 1 && (
+        <div className="inline-tp-strategy">
+          <span
+            className="inline-tp-dot"
+            style={{ backgroundColor: "#06b6d4" }}
+          />
+          <span>EP={epSize}: {full[0]} experts → {tpShape[0]} per EP rank</span>
+        </div>
+      )}
 
       {/* Partition slices */}
       <div
@@ -123,7 +203,7 @@ function InlineTpViz({
                 R{i}
               </span>
               <span className="tp-slice-shape">
-                {displayTp.join(" \u00d7 ")}
+                {isExpert ? `${tpShape[0]}×${displayTp.join(" × ")}` : displayTp.join(" × ")}
               </span>
               <span className="tp-slice-params">
                 {formatParams(perRankParams)}
@@ -179,6 +259,7 @@ function OpBlock({
   op,
   config,
   tpSize,
+  epSize,
   isSelected,
   onClick,
   compact,
@@ -190,6 +271,7 @@ function OpBlock({
   op?: Operator;
   config?: ModelConfig;
   tpSize: number;
+  epSize: number;
   isSelected: boolean;
   onClick?: () => void;
   compact?: boolean;
@@ -197,7 +279,7 @@ function OpBlock({
   const style = STYLES[type] ?? STYLES.input;
   const clickable = !!operatorName;
   const hasPartition = op?.partition && op.partition.strategy !== "replicated";
-  const showTpViz = isSelected && tpSize > 1 && op && config && hasPartition;
+  const showTpViz = isSelected && (tpSize > 1 || epSize > 1) && op && config && hasPartition;
   const showReplicated =
     isSelected &&
     tpSize > 1 &&
@@ -248,7 +330,7 @@ function OpBlock({
 
       {/* Inline TP visualization when selected */}
       {showTpViz && op && config && (
-        <InlineTpViz op={op} config={config} tpSize={tpSize} />
+        <InlineTpViz op={op} config={config} tpSize={tpSize} epSize={epSize} />
       )}
 
       {/* Replicated indicator */}
@@ -299,6 +381,8 @@ function ResidualAdd() {
 interface Props {
   model: ModelArchitecture;
   tpSize: number;
+  ppSize: number;
+  epSize: number;
   selectedOp: string | null;
   onSelectOp: (operatorName: string | null, layer: Layer | null) => void;
 }
@@ -308,6 +392,8 @@ interface Props {
 export function ArchitectureDiagram({
   model,
   tpSize,
+  ppSize,
+  epSize,
   selectedOp,
   onSelectOp,
 }: Props) {
@@ -319,6 +405,18 @@ export function ArchitectureDiagram({
       model.layers.find((l) => l.layer_type === "moe") ?? dense;
     return { denseLayer: dense, moeLayer: moe };
   }, [model.layers]);
+
+  const ppStageRanges = useMemo(
+    () => computePpStageRanges(model.config.num_hidden_layers, ppSize),
+    [model.config.num_hidden_layers, ppSize],
+  );
+
+  const ppStageParams = useMemo(
+    () => ppStageRanges.map((_, i) =>
+      computePerRankParamsForPpStage(model, tpSize, i, ppSize, epSize),
+    ),
+    [model, tpSize, ppSize, epSize, ppStageRanges],
+  );
 
   const findOp = (layer: Layer, name: string): Operator | undefined =>
     layer.operators.find((o) => o.name === name);
@@ -353,6 +451,7 @@ export function ArchitectureDiagram({
         op={op}
         config={model.config}
         tpSize={tpSize}
+        epSize={epSize}
         isSelected={selectedOp === operatorName}
         onClick={
           operatorName && layer
@@ -367,153 +466,150 @@ export function ArchitectureDiagram({
   const isLlama = model.model_family !== "deepseek_v2";
   const numLayers = model.config.num_hidden_layers;
 
-  return (
-    <div className="arch-vertical">
-      {/* ── Embedding ── */}
-      <div className="arch-hrow">
-        {renderOp("Embedding", "input", undefined, undefined, "VocabParallelEmbedding")}
-        <HArrow />
-        {renderOp("AllReduce (TP)", "comm")}
-      </div>
-
-      <VArrow />
-
-      {/* ── Decoder Layer × N ── */}
-      <div className="decoder-box">
-        <div className="decoder-title">
-          Decoder Layer &times; {numLayers}
+  /* ── Render attention section (shared between PP and non-PP modes) ── */
+  const renderAttention = () => {
+    if (isLlama) {
+      return (
+        <SectionBox type="attention" title="Self-Attention (MHA)">
+          {renderOp("RMSNorm", "norm", undefined, undefined, "input_layernorm")}
+          <VArrow />
+          {renderOp("QKV Proj", "attention", "qkv_proj", denseLayer)}
+          <VArrow />
+          <div className="arch-hrow compute-row">
+            {renderOp("RoPE", "attention", undefined, undefined, undefined, true)}
+            <HArrow />
+            {renderOp("Q\u00b7K\u1d40/\u221ad", "attention", undefined, undefined, undefined, true)}
+            <HArrow />
+            {renderOp("Softmax", "attention", undefined, undefined, undefined, true)}
+            <HArrow />
+            {renderOp("Score\u00b7V", "attention", undefined, undefined, undefined, true)}
+          </div>
+          <VArrow />
+          {renderOp("O Proj", "attention", "o_proj", denseLayer)}
+          <VArrow />
+          {renderOp("AllReduce (TP)", "comm")}
+        </SectionBox>
+      );
+    }
+    return (
+      <SectionBox type="attention" title="Self-Attention (MLA)">
+        {renderOp("RMSNorm", "norm", undefined, undefined, "input_layernorm")}
+        <VArrow />
+        {renderOp("QKV_A Proj", "attention", "fused_qkv_a_proj_with_mqa", denseLayer)}
+        <VArrow />
+        <div className="arch-hrow">
+          {renderOp("Q_B Proj", "attention", "q_b_proj", denseLayer)}
+          {renderOp("KV_B Proj", "attention", "kv_b_proj", denseLayer)}
         </div>
+        <VArrow />
+        <div className="arch-hrow compute-row">
+          {renderOp("RoPE", "attention", undefined, undefined, undefined, true)}
+          <HArrow />
+          {renderOp("Q\u00b7K\u1d40/\u221ad", "attention", undefined, undefined, undefined, true)}
+          <HArrow />
+          {renderOp("Softmax", "attention", undefined, undefined, undefined, true)}
+          <HArrow />
+          {renderOp("Score\u00b7V", "attention", undefined, undefined, undefined, true)}
+        </div>
+        <VArrow />
+        {renderOp("O Proj", "attention", "o_proj", denseLayer)}
+        <VArrow />
+        {renderOp("AllReduce (TP)", "comm")}
+      </SectionBox>
+    );
+  };
 
-        {/* ─ Attention Section ─ */}
-        {isLlama ? (
-          <SectionBox type="attention" title="Self-Attention (MHA)">
-            {renderOp("RMSNorm", "norm", undefined, undefined, "input_layernorm")}
-            <VArrow />
-            {renderOp("QKV Proj", "attention", "qkv_proj", denseLayer)}
-            <VArrow />
-            <div className="arch-hrow compute-row">
-              {renderOp("RoPE", "attention", undefined, undefined, undefined, true)}
-              <HArrow />
-              {renderOp("Q\u00b7K\u1d40/\u221ad", "attention", undefined, undefined, undefined, true)}
-              <HArrow />
-              {renderOp("Softmax", "attention", undefined, undefined, undefined, true)}
-              <HArrow />
-              {renderOp("Score\u00b7V", "attention", undefined, undefined, undefined, true)}
-            </div>
-            <VArrow />
-            {renderOp("O Proj", "attention", "o_proj", denseLayer)}
-            <VArrow />
-            {renderOp("AllReduce (TP)", "comm")}
-          </SectionBox>
-        ) : (
-          <SectionBox type="attention" title="Self-Attention (MLA)">
-            {renderOp("RMSNorm", "norm", undefined, undefined, "input_layernorm")}
-            <VArrow />
-            {renderOp("QKV_A Proj", "attention", "fused_qkv_a_proj_with_mqa", denseLayer)}
-            <VArrow />
-            <div className="arch-hrow">
-              {renderOp("Q_B Proj", "attention", "q_b_proj", denseLayer)}
-              {renderOp("KV_B Proj", "attention", "kv_b_proj", denseLayer)}
-            </div>
-            <VArrow />
-            <div className="arch-hrow compute-row">
-              {renderOp("RoPE", "attention", undefined, undefined, undefined, true)}
-              <HArrow />
-              {renderOp("Q\u00b7K\u1d40/\u221ad", "attention", undefined, undefined, undefined, true)}
-              <HArrow />
-              {renderOp("Softmax", "attention", undefined, undefined, undefined, true)}
-              <HArrow />
-              {renderOp("Score\u00b7V", "attention", undefined, undefined, undefined, true)}
-            </div>
-            <VArrow />
-            {renderOp("O Proj", "attention", "o_proj", denseLayer)}
-            <VArrow />
-            {renderOp("AllReduce (TP)", "comm")}
-          </SectionBox>
-        )}
-
-        <ResidualAdd />
-
-        {/* ─ Feedforward Section ─ */}
-        {isLlama ? (
-          <SectionBox type="mlp" title="MLP (Feed-Forward)">
-            {renderOp("RMSNorm", "norm", undefined, undefined, "post_attn_norm")}
-            <VArrow />
+  /* ── Render feedforward section ── */
+  const renderFeedforward = () => {
+    if (isLlama) {
+      return (
+        <SectionBox type="mlp" title="MLP (Feed-Forward)">
+          {renderOp("RMSNorm", "norm", undefined, undefined, "post_attn_norm")}
+          <VArrow />
+          {renderOp("gate_up_proj", "mlp", "gate_up_proj", denseLayer)}
+          <VArrow />
+          {renderOp("SiLU", "mlp")}
+          <VArrow />
+          {renderOp("down_proj", "mlp", "down_proj", denseLayer)}
+          <VArrow />
+          {renderOp("AllReduce (TP)", "comm")}
+        </SectionBox>
+      );
+    }
+    return (
+      <>
+        {renderOp("RMSNorm", "norm", undefined, undefined, "post_attn_norm")}
+        <VArrow />
+        <div className="arch-hrow ff-dual-path">
+          <SectionBox
+            type="dense_mlp"
+            title={`Dense MLP (layer < ${model.config.first_k_dense_replace ?? 0})`}
+          >
             {renderOp("gate_up_proj", "mlp", "gate_up_proj", denseLayer)}
             <VArrow />
             {renderOp("SiLU", "mlp")}
             <VArrow />
             {renderOp("down_proj", "mlp", "down_proj", denseLayer)}
-            <VArrow />
-            {renderOp("AllReduce (TP)", "comm")}
           </SectionBox>
-        ) : (
-          /* DeepSeek: shared norm then Dense MLP / MoE side-by-side */
-          <>
-            {renderOp("RMSNorm", "norm", undefined, undefined, "post_attn_norm")}
+          <SectionBox
+            type="moe"
+            title={`MoE (layer \u2265 ${model.config.first_k_dense_replace ?? 0})`}
+          >
+            {renderOp("Router", "moe", "gate", moeLayer)}
             <VArrow />
-
-            <div className="arch-hrow ff-dual-path">
-              {/* Dense MLP path */}
-              <SectionBox
-                type="dense_mlp"
-                title={`Dense MLP (layer < ${model.config.first_k_dense_replace ?? 0})`}
-              >
-                {renderOp("gate_up_proj", "mlp", "gate_up_proj", denseLayer)}
-                <VArrow />
-                {renderOp("SiLU", "mlp")}
-                <VArrow />
-                {renderOp("down_proj", "mlp", "down_proj", denseLayer)}
-              </SectionBox>
-
-              {/* MoE path */}
-              <SectionBox
-                type="moe"
-                title={`MoE (layer \u2265 ${model.config.first_k_dense_replace ?? 0})`}
-              >
-                {renderOp("Router", "moe", "gate", moeLayer)}
-                <VArrow />
-                <div className="arch-hrow">
-                  {renderOp(
-                    "Experts gate_up",
-                    "moe",
-                    "experts_gate_up",
-                    moeLayer,
-                    `${model.config.n_routed_experts ?? 0} experts`,
-                  )}
-                  <HArrow />
-                  {renderOp("Experts down", "moe", "experts_down", moeLayer)}
-                </div>
-                <VArrow />
-                <div className="arch-hrow">
-                  {renderOp(
-                    "Shared gate_up",
-                    "moe",
-                    "shared_experts_gate_up",
-                    moeLayer,
-                  )}
-                  <HArrow />
-                  {renderOp(
-                    "Shared down",
-                    "moe",
-                    "shared_experts_down",
-                    moeLayer,
-                  )}
-                </div>
-              </SectionBox>
+            <div className="arch-hrow">
+              {renderOp(
+                "Experts gate_up",
+                "moe",
+                "experts_gate_up",
+                moeLayer,
+                epSize > 1
+                  ? `${model.config.n_routed_experts ?? 0} experts → ${Math.floor((model.config.n_routed_experts ?? 0) / epSize)} / EP rank`
+                  : `${model.config.n_routed_experts ?? 0} experts`,
+              )}
+              <HArrow />
+              {renderOp("Experts down", "moe", "experts_down", moeLayer)}
             </div>
-
             <VArrow />
-            {renderOp("AllReduce / AllToAll (TP/EP)", "comm")}
-          </>
-        )}
+            <div className="arch-hrow">
+              {renderOp("Shared gate_up", "moe", "shared_experts_gate_up", moeLayer)}
+              <HArrow />
+              {renderOp("Shared down", "moe", "shared_experts_down", moeLayer)}
+            </div>
+          </SectionBox>
+        </div>
+        <VArrow />
+        {renderOp("AllReduce / AllToAll (TP/EP)", "comm")}
+      </>
+    );
+  };
 
-        <ResidualAdd />
+  /* ── Render decoder content (attention + residual + FF + residual) ── */
+  const renderDecoderContent = () => (
+    <>
+      {renderAttention()}
+      <ResidualAdd />
+      {renderFeedforward()}
+      <ResidualAdd />
+    </>
+  );
+
+  /* ── Render embedding row ── */
+  const renderEmbedding = () => (
+    <>
+      <div className="arch-hrow">
+        {renderOp("Embedding", "input", undefined, undefined, "VocabParallelEmbedding")}
+        <HArrow />
+        {renderOp("AllReduce (TP)", "comm")}
       </div>
-
       <VArrow />
+    </>
+  );
 
-      {/* ── Output ── */}
+  /* ── Render output row ── */
+  const renderOutput = () => (
+    <>
+      <VArrow />
       <div className="arch-hrow">
         {renderOp("Final RMSNorm", "norm")}
         <HArrow />
@@ -523,37 +619,132 @@ export function ArchitectureDiagram({
         <HArrow />
         {renderOp("Sample", "input")}
       </div>
+    </>
+  );
 
-      {/* ── Legend ── */}
-      <div className="arch-legend">
-        <span className="arch-legend-title">Legend</span>
-        {[
-          { label: "Input / Output", type: "input" },
-          { label: "Normalization", type: "norm" },
-          { label: "Attention", type: "attention" },
-          { label: "Communication", type: "comm" },
-          { label: "Dense MLP", type: "mlp" },
-          { label: "MoE / Experts", type: "moe" },
-        ].map((item) => {
-          const s = STYLES[item.type];
+  /* ── Compute layer type summary for a PP stage ── */
+  const getStageLayerTypes = (range: PpStageRange) => {
+    let dense = 0;
+    let moe = 0;
+    for (let i = 0; i < range.numLayers; i++) {
+      const layer = model.layers[range.startLayer + i];
+      if (layer?.layer_type === "moe") moe++;
+      else dense++;
+    }
+    return { dense, moe };
+  };
+
+  /* ── Legend ── */
+  const renderLegend = () => (
+    <div className="arch-legend">
+      <span className="arch-legend-title">Legend</span>
+      {[
+        { label: "Input / Output", type: "input" },
+        { label: "Normalization", type: "norm" },
+        { label: "Attention", type: "attention" },
+        { label: "Communication", type: "comm" },
+        { label: "Dense MLP", type: "mlp" },
+        { label: "MoE / Experts", type: "moe" },
+      ].map((item) => {
+        const s = STYLES[item.type];
+        return (
+          <span key={item.type} className="arch-legend-item">
+            <span
+              className="arch-legend-swatch"
+              style={{
+                backgroundColor: s.fill,
+                borderColor: s.stroke,
+              }}
+            />
+            {item.label}
+          </span>
+        );
+      })}
+      <span className="arch-legend-item">
+        <span className="arch-legend-dot" />
+        Click to view TP partition
+      </span>
+    </div>
+  );
+
+  /* ── PP mode: render stages ── */
+  if (ppSize > 1) {
+    return (
+      <div className="arch-vertical">
+        {ppStageRanges.map((range, i) => {
+          const layerTypes = getStageLayerTypes(range);
+          const isFirstStage = i === 0;
+          const isLastStage = i === ppSize - 1;
+
           return (
-            <span key={item.type} className="arch-legend-item">
-              <span
-                className="arch-legend-swatch"
-                style={{
-                  backgroundColor: s.fill,
-                  borderColor: s.stroke,
-                }}
-              />
-              {item.label}
-            </span>
+            <div key={i}>
+              <PpStageBox
+                stage={i}
+                range={range}
+                paramsLabel={formatParams(ppStageParams[i])}
+              >
+                {/* Embedding only in first stage */}
+                {isFirstStage && renderEmbedding()}
+
+                {/* Decoder box for this stage */}
+                <div className="decoder-box">
+                  <div className="decoder-title">
+                    Decoder Layer &times; {range.numLayers}
+                    {!isLlama && layerTypes.moe > 0 && (
+                      <span className="decoder-layer-types">
+                        {layerTypes.dense > 0 && (
+                          <span className="layer-type-badge dense">{layerTypes.dense} dense</span>
+                        )}
+                        <span className="layer-type-badge moe">{layerTypes.moe} MoE</span>
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Show full detail in first stage, compact in others */}
+                  {isFirstStage ? (
+                    renderDecoderContent()
+                  ) : (
+                    <div className="pp-stage-compact-content">
+                      <span className="pp-stage-compact-label">
+                        Self-Attention → {isLlama ? "MLP" : layerTypes.moe > 0 ? "MoE" : "MLP"} → Residual
+                      </span>
+                      <span className="pp-stage-compact-note">
+                        Same structure as Stage 0
+                      </span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Output only in last stage */}
+                {isLastStage && renderOutput()}
+              </PpStageBox>
+
+              {/* P2P communication between stages */}
+              {!isLastStage && <P2PArrow />}
+            </div>
           );
         })}
-        <span className="arch-legend-item">
-          <span className="arch-legend-dot" />
-          Click to view TP partition
-        </span>
+
+        {renderLegend()}
       </div>
+    );
+  }
+
+  /* ── Normal mode (ppSize <= 1) ── */
+  return (
+    <div className="arch-vertical">
+      {renderEmbedding()}
+
+      <div className="decoder-box">
+        <div className="decoder-title">
+          Decoder Layer &times; {numLayers}
+        </div>
+        {renderDecoderContent()}
+      </div>
+
+      {renderOutput()}
+
+      {renderLegend()}
     </div>
   );
 }
