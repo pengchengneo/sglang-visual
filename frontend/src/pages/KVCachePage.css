@@ -1,0 +1,102 @@
+.kv-cache-page {
+  padding: 20px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.kv-cache-header h2 {
+  font-size: 20px;
+  font-weight: 700;
+  margin: 0 0 4px;
+}
+
+.page-subtitle {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.kv-cache-controls {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.kv-cache-controls .scenario-list {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.kv-cache-controls .scenario-btn {
+  padding: 5px 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text-secondary);
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.kv-cache-controls .scenario-btn.active {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+
+.kv-cache-controls .control-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  display: block;
+  margin-bottom: 6px;
+}
+
+.kv-cache-controls .sidebar-range {
+  width: 100%;
+}
+
+.kv-cache-message {
+  padding: 8px 12px;
+  background: var(--bg-hover);
+  border-radius: 8px;
+  font-size: 13px;
+  color: var(--text);
+  font-family: "SF Mono", "Fira Code", monospace;
+  min-height: 20px;
+}
+
+.kv-cache-content {
+  display: flex;
+  gap: 20px;
+  flex: 1;
+  min-height: 0;
+}
+
+.kv-cache-tree-panel {
+  flex: 1;
+  min-width: 0;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  overflow: auto;
+}
+
+.kv-cache-memory-panel {
+  width: 300px;
+  flex-shrink: 0;
+}
+
+@media (max-width: 900px) {
+  .kv-cache-content {
+    flex-direction: column;
+  }
+  .kv-cache-memory-panel {
+    width: 100%;
+  }
+}
