@@ -25,18 +25,24 @@ interface FrameState {
   message: string;
 }
 
+function cloneNode(node: RadixNode, parent: RadixNode | null): RadixNode {
+  const clone: RadixNode = {
+    id: node.id,
+    tokens: [...node.tokens],
+    refCount: node.refCount,
+    children: new Map(),
+    parent,
+    state: node.state,
+  };
+  for (const [key, child] of node.children) {
+    clone.children.set(key, cloneNode(child, clone));
+  }
+  return clone;
+}
+
 function cloneTree(t: RadixTree): RadixTree {
-  return JSON.parse(JSON.stringify(t, (_key, value) => {
-    if (value instanceof Map) {
-      return { __type: "Map", entries: Array.from(value.entries()) };
-    }
-    return value;
-  }), (_key, value) => {
-    if (value && value.__type === "Map") {
-      return new Map(value.entries);
-    }
-    return value;
-  });
+  const root = cloneNode(t.root, null);
+  return { root, blockCount: t.blockCount, maxBlocks: t.maxBlocks };
 }
 
 function generateFrames(scenarioId: string, maxBlocks: number): FrameState[] {
