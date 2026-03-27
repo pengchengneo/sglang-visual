@@ -1,0 +1,52 @@
+.top-nav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 52px;
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  padding: 0 24px;
+  background: var(--bg-card);
+  border-bottom: 1px solid var(--border);
+  z-index: 100;
+  backdrop-filter: blur(12px);
+}
+
+.top-nav-brand {
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--accent);
+  white-space: nowrap;
+}
+
+.top-nav-tabs {
+  display: flex;
+  gap: 4px;
+  background: var(--bg-hover);
+  border-radius: 8px;
+  padding: 3px;
+}
+
+.top-nav-tab {
+  padding: 6px 14px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  text-decoration: none;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.top-nav-tab:hover {
+  color: var(--text);
+  background: var(--bg-card);
+}
+
+.top-nav-tab.active {
+  color: #fff;
+  background: var(--accent);
+  box-shadow: 0 1px 4px rgba(99, 102, 241, 0.3);
+}

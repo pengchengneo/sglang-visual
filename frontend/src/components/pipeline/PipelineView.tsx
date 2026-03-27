@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import type { ModelArchitecture, Layer } from "../../types/model";
-import type { Dtype, Quantization } from "../../App";
+import type { Dtype, Quantization } from "../../contexts/AppContext";
 import {
   formatParams,
   formatMemory,

@@ -63,7 +63,7 @@ export function insertSequence(tree: RadixTree, tokens: string[]): RadixNode {
   return current;
 }
 
-export function releaseSequence(tree: RadixTree, leafNode: RadixNode): void {
+export function releaseSequence(_tree: RadixTree, leafNode: RadixNode): void {
   let node: RadixNode | null = leafNode;
   while (node) {
     node.refCount = Math.max(0, node.refCount - 1);

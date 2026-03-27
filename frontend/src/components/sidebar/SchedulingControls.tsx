@@ -1,4 +1,4 @@
-import type { SchedulePolicy } from "../../App";
+import type { SchedulePolicy } from "../../contexts/AppContext";
 
 interface Props {
   schedulePolicy: SchedulePolicy;

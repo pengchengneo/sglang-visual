@@ -1,9 +1,9 @@
 import type { PrefillFrame } from "./SchedulingEngine";
 import "./ChunkedPrefillViz.css";
 
-interface Props { frames: PrefillFrame[]; currentFrame: number; totalPrefillLength: number; }
+interface Props { frames: PrefillFrame[]; currentFrame: number; totalPrefillLength?: number; }
 
-export default function ChunkedPrefillViz({ frames, currentFrame, totalPrefillLength }: Props) {
+export default function ChunkedPrefillViz({ frames, currentFrame }: Props) {
   const visibleFrames = frames.slice(0, currentFrame + 1);
   return (
     <div className="cp-viz">

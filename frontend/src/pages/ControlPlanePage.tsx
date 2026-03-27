@@ -1,28 +1,27 @@
 import { useAppContext } from "../contexts/AppContext";
-import ControlPlaneView from "../components/controlplane/ControlPlaneView";
+import { ControlPlaneView } from "../components/controlplane/ControlPlaneView";
+import { ErrorBoundary } from "../components/ErrorBoundary";
 
 export default function ControlPlanePage() {
-  const {
-    tpSize, dpSize, ppSize, epSize, enableDpAttention, modelConfig,
-    schedulePolicy, chunkedPrefillSize, disableRadixCache,
-    specAlgorithm, specNumDraftTokens, cudaGraphMaxBs, disableCudaGraph,
-  } = useAppContext();
+  const ctx = useAppContext();
 
   return (
-    <ControlPlaneView
-      tpSize={tpSize}
-      dpSize={dpSize}
-      ppSize={ppSize}
-      epSize={epSize}
-      enableDpAttention={enableDpAttention}
-      modelConfig={modelConfig}
-      schedulePolicy={schedulePolicy}
-      chunkedPrefillSize={chunkedPrefillSize}
-      disableRadixCache={disableRadixCache}
-      specAlgorithm={specAlgorithm}
-      specNumDraftTokens={specNumDraftTokens}
-      cudaGraphMaxBs={cudaGraphMaxBs}
-      disableCudaGraph={disableCudaGraph}
-    />
+    <ErrorBoundary fallbackTitle="Control plane error">
+      <ControlPlaneView
+        tpSize={ctx.tpSize}
+        dpSize={ctx.dpSize}
+        ppSize={ctx.ppSize}
+        epSize={ctx.epSize}
+        enableDpAttention={ctx.enableDpAttention}
+        modelConfig={ctx.modelConfig}
+        schedulePolicy={ctx.schedulePolicy}
+        chunkedPrefillSize={ctx.chunkedPrefillSize}
+        disableRadixCache={ctx.disableRadixCache}
+        specAlgorithm={ctx.specAlgorithm}
+        specNumDraftTokens={ctx.specNumDraftTokens}
+        cudaGraphMaxBs={ctx.cudaGraphMaxBs}
+        disableCudaGraph={ctx.disableCudaGraph}
+      />
+    </ErrorBoundary>
   );
 }

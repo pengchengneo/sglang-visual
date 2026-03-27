@@ -1,4 +1,4 @@
-import type { SpecAlgorithm } from "../../App";
+import type { SpecAlgorithm } from "../../contexts/AppContext";
 
 interface Props {
   specAlgorithm: SpecAlgorithm;

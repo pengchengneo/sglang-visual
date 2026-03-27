@@ -1,4 +1,4 @@
-import type { Dtype, Quantization, KvCacheDtype } from "../../App";
+import type { Dtype, Quantization, KvCacheDtype } from "../../contexts/AppContext";
 
 interface Props {
   dtype: Dtype;

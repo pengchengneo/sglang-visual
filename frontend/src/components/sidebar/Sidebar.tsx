@@ -1,13 +1,6 @@
 import { useState } from "react";
-import type { PresetManifestEntry, ModelConfig } from "../../types/model";
-import type { Plane } from "../controls/PlaneTabBar";
-import type {
-  Dtype,
-  Quantization,
-  KvCacheDtype,
-  SchedulePolicy,
-  SpecAlgorithm,
-} from "../../App";
+import { useLocation } from "react-router-dom";
+import { useAppContext } from "../../contexts/AppContext";
 import { ModelSelector } from "../controls/ModelSelector";
 import { GpuControls } from "../controls/GpuControls";
 import { SidebarSection } from "./SidebarSection";
@@ -19,97 +12,11 @@ import { ContextControls } from "./ContextControls";
 import { SpeculativeControls } from "./SpeculativeControls";
 import { CudaGraphControls } from "./CudaGraphControls";
 
-interface Props {
-  manifest: PresetManifestEntry[];
-  selectedPreset: string | null;
-  onSelectModel: (id: string) => void;
-  manifestLoading: boolean;
-  tpSize: number;
-  onTpSizeChange: (tp: number) => void;
-  dpSize: number;
-  onDpSizeChange: (dp: number) => void;
-  ppSize: number;
-  onPpSizeChange: (pp: number) => void;
-  epSize: number;
-  onEpSizeChange: (ep: number) => void;
-  enableDpAttention: boolean;
-  onEnableDpAttentionChange: (enabled: boolean) => void;
-  modelConfig: ModelConfig | null;
-  activePlane: Plane;
-  gpuMemoryBytes: number;
-  onGpuMemoryChange: (bytes: number) => void;
-  memFractionStatic: number;
-  onMemFractionChange: (fraction: number) => void;
-  dtype: Dtype;
-  onDtypeChange: (dtype: Dtype) => void;
-  quantization: Quantization;
-  onQuantizationChange: (q: Quantization) => void;
-  kvCacheDtype: KvCacheDtype;
-  onKvCacheDtypeChange: (kv: KvCacheDtype) => void;
-  schedulePolicy: SchedulePolicy;
-  onSchedulePolicyChange: (policy: SchedulePolicy) => void;
-  chunkedPrefillSize: number;
-  onChunkedPrefillSizeChange: (size: number) => void;
-  disableRadixCache: boolean;
-  onDisableRadixCacheChange: (disabled: boolean) => void;
-  contextLength: number;
-  onContextLengthChange: (ctx: number) => void;
-  specAlgorithm: SpecAlgorithm;
-  onSpecAlgorithmChange: (alg: SpecAlgorithm) => void;
-  specNumDraftTokens: number;
-  onSpecNumDraftTokensChange: (n: number) => void;
-  cudaGraphMaxBs: number;
-  onCudaGraphMaxBsChange: (bs: number) => void;
-  disableCudaGraph: boolean;
-  onDisableCudaGraphChange: (disabled: boolean) => void;
-}
-
 const DEFAULT_SECTIONS = new Set(["model", "parallelism"]);
 
-export function Sidebar({
-  manifest,
-  selectedPreset,
-  onSelectModel,
-  manifestLoading,
-  tpSize,
-  onTpSizeChange,
-  dpSize,
-  onDpSizeChange,
-  ppSize,
-  onPpSizeChange,
-  epSize,
-  onEpSizeChange,
-  enableDpAttention,
-  onEnableDpAttentionChange,
-  modelConfig,
-  activePlane,
-  gpuMemoryBytes,
-  onGpuMemoryChange,
-  memFractionStatic,
-  onMemFractionChange,
-  dtype,
-  onDtypeChange,
-  quantization,
-  onQuantizationChange,
-  kvCacheDtype,
-  onKvCacheDtypeChange,
-  schedulePolicy,
-  onSchedulePolicyChange,
-  chunkedPrefillSize,
-  onChunkedPrefillSizeChange,
-  disableRadixCache,
-  onDisableRadixCacheChange,
-  contextLength,
-  onContextLengthChange,
-  specAlgorithm,
-  onSpecAlgorithmChange,
-  specNumDraftTokens,
-  onSpecNumDraftTokensChange,
-  cudaGraphMaxBs,
-  onCudaGraphMaxBsChange,
-  disableCudaGraph,
-  onDisableCudaGraphChange,
-}: Props) {
+export function Sidebar() {
+  const ctx = useAppContext();
+  const { pathname } = useLocation();
   const [collapsed, setCollapsed] = useState(false);
   const [openSections, setOpenSections] = useState<Set<string>>(DEFAULT_SECTIONS);
 
@@ -121,6 +28,17 @@ export function Sidebar({
       return next;
     });
   };
+
+  const isCompute = pathname === "/compute";
+  const isControl = pathname === "/control";
+  const isScheduling = pathname === "/scheduling";
+  const isKVCache = pathname === "/kv-cache";
+
+  const showScheduling = isControl || isScheduling;
+  const showSpeculative = isControl;
+  const showCudaGraph = isControl;
+  const showContext = isCompute || isKVCache;
+  const showGpu = isCompute || isKVCache;
 
   return (
     <>
@@ -146,13 +64,16 @@ export function Sidebar({
           open={openSections.has("model")}
           onToggle={() => toggle("model")}
         >
-          {manifestLoading ? (
+          {ctx.manifestLoading ? (
             <div className="loading">Loading models...</div>
           ) : (
             <ModelSelector
-              manifest={manifest}
-              selected={selectedPreset}
-              onSelect={onSelectModel}
+              manifest={ctx.manifest}
+              selected={ctx.selectedPreset}
+              onSelect={(id: string) => {
+                ctx.setSelectedPreset(id);
+                ctx.setTpSize(1);
+              }}
               vertical
             />
           )}
@@ -164,17 +85,17 @@ export function Sidebar({
           onToggle={() => toggle("parallelism")}
         >
           <ParallelismControls
-            config={modelConfig}
-            tpSize={tpSize}
-            onTpSizeChange={onTpSizeChange}
-            dpSize={dpSize}
-            onDpSizeChange={onDpSizeChange}
-            ppSize={ppSize}
-            onPpSizeChange={onPpSizeChange}
-            epSize={epSize}
-            onEpSizeChange={onEpSizeChange}
-            enableDpAttention={enableDpAttention}
-            onEnableDpAttentionChange={onEnableDpAttentionChange}
+            config={ctx.modelConfig}
+            tpSize={ctx.tpSize}
+            onTpSizeChange={ctx.setTpSize}
+            dpSize={ctx.dpSize}
+            onDpSizeChange={ctx.setDpSize}
+            ppSize={ctx.ppSize}
+            onPpSizeChange={ctx.setPpSize}
+            epSize={ctx.epSize}
+            onEpSizeChange={ctx.setEpSize}
+            enableDpAttention={ctx.enableDpAttention}
+            onEnableDpAttentionChange={ctx.setEnableDpAttention}
           />
         </SidebarSection>
 
@@ -184,86 +105,88 @@ export function Sidebar({
           onToggle={() => toggle("quantization")}
         >
           <QuantizationControls
-            dtype={dtype}
-            onDtypeChange={onDtypeChange}
-            quantization={quantization}
-            onQuantizationChange={onQuantizationChange}
-            kvCacheDtype={kvCacheDtype}
-            onKvCacheDtypeChange={onKvCacheDtypeChange}
+            dtype={ctx.dtype}
+            onDtypeChange={ctx.setDtype}
+            quantization={ctx.quantization}
+            onQuantizationChange={ctx.setQuantization}
+            kvCacheDtype={ctx.kvCacheDtype}
+            onKvCacheDtypeChange={ctx.setKvCacheDtype}
           />
         </SidebarSection>
 
-        {activePlane === "control" && (
-          <>
-            <SidebarSection
-              title="Scheduling"
-              open={openSections.has("scheduling")}
-              onToggle={() => toggle("scheduling")}
-            >
-              <SchedulingControls
-                schedulePolicy={schedulePolicy}
-                onSchedulePolicyChange={onSchedulePolicyChange}
-                chunkedPrefillSize={chunkedPrefillSize}
-                onChunkedPrefillSizeChange={onChunkedPrefillSizeChange}
-                disableRadixCache={disableRadixCache}
-                onDisableRadixCacheChange={onDisableRadixCacheChange}
-              />
-            </SidebarSection>
-
-            <SidebarSection
-              title="Speculative Decoding"
-              open={openSections.has("speculative")}
-              onToggle={() => toggle("speculative")}
-            >
-              <SpeculativeControls
-                specAlgorithm={specAlgorithm}
-                onSpecAlgorithmChange={onSpecAlgorithmChange}
-                specNumDraftTokens={specNumDraftTokens}
-                onSpecNumDraftTokensChange={onSpecNumDraftTokensChange}
-              />
-            </SidebarSection>
-
-            <SidebarSection
-              title="CUDA Graph"
-              open={openSections.has("cudagraph")}
-              onToggle={() => toggle("cudagraph")}
-            >
-              <CudaGraphControls
-                cudaGraphMaxBs={cudaGraphMaxBs}
-                onCudaGraphMaxBsChange={onCudaGraphMaxBsChange}
-                disableCudaGraph={disableCudaGraph}
-                onDisableCudaGraphChange={onDisableCudaGraphChange}
-              />
-            </SidebarSection>
-          </>
+        {showScheduling && (
+          <SidebarSection
+            title="Scheduling"
+            open={openSections.has("scheduling")}
+            onToggle={() => toggle("scheduling")}
+          >
+            <SchedulingControls
+              schedulePolicy={ctx.schedulePolicy}
+              onSchedulePolicyChange={ctx.setSchedulePolicy}
+              chunkedPrefillSize={ctx.chunkedPrefillSize}
+              onChunkedPrefillSizeChange={ctx.setChunkedPrefillSize}
+              disableRadixCache={ctx.disableRadixCache}
+              onDisableRadixCacheChange={ctx.setDisableRadixCache}
+            />
+          </SidebarSection>
         )}
 
-        {activePlane === "compute" && (
-          <>
-            <SidebarSection
-              title="Context"
-              open={openSections.has("context")}
-              onToggle={() => toggle("context")}
-            >
-              <ContextControls
-                contextLength={contextLength}
-                onContextLengthChange={onContextLengthChange}
-              />
-            </SidebarSection>
+        {showSpeculative && (
+          <SidebarSection
+            title="Speculative Decoding"
+            open={openSections.has("speculative")}
+            onToggle={() => toggle("speculative")}
+          >
+            <SpeculativeControls
+              specAlgorithm={ctx.specAlgorithm}
+              onSpecAlgorithmChange={ctx.setSpecAlgorithm}
+              specNumDraftTokens={ctx.specNumDraftTokens}
+              onSpecNumDraftTokensChange={ctx.setSpecNumDraftTokens}
+            />
+          </SidebarSection>
+        )}
 
-            <SidebarSection
-              title="GPU"
-              open={openSections.has("gpu")}
-              onToggle={() => toggle("gpu")}
-            >
-              <GpuControls
-                gpuMemoryBytes={gpuMemoryBytes}
-                onGpuMemoryChange={onGpuMemoryChange}
-                memFractionStatic={memFractionStatic}
-                onMemFractionChange={onMemFractionChange}
-              />
-            </SidebarSection>
-          </>
+        {showCudaGraph && (
+          <SidebarSection
+            title="CUDA Graph"
+            open={openSections.has("cudagraph")}
+            onToggle={() => toggle("cudagraph")}
+          >
+            <CudaGraphControls
+              cudaGraphMaxBs={ctx.cudaGraphMaxBs}
+              onCudaGraphMaxBsChange={ctx.setCudaGraphMaxBs}
+              disableCudaGraph={ctx.disableCudaGraph}
+              onDisableCudaGraphChange={ctx.setDisableCudaGraph}
+            />
+          </SidebarSection>
+        )}
+
+        {showContext && (
+          <SidebarSection
+            title="Context"
+            open={openSections.has("context")}
+            onToggle={() => toggle("context")}
+          >
+            <ContextControls
+              contextLength={ctx.contextLength}
+              onContextLengthChange={ctx.setContextLength}
+            />
+          </SidebarSection>
+        )}
+
+        {showGpu && (
+          <SidebarSection
+            title="GPU"
+            open={openSections.has("gpu")}
+            onToggle={() => toggle("gpu")}
+          >
+            <GpuControls
+              gpuMemoryBytes={ctx.gpuMemoryBytes}
+              onGpuMemoryChange={ctx.setGpuMemoryBytes}
+              memFractionStatic={ctx.memFractionStatic}
+              onMemFractionChange={ctx.setMemFractionStatic}
+            />
+          </SidebarSection>
         )}
       </aside>
 
