@@ -15,7 +15,7 @@ export default function KVCacheSidebar({
 }: Props) {
   return (
     <div className="kv-cache-sidebar">
-      <label className="control-label">Scenario</label>
+      <span className="control-label">Scenario</span>
       <div className="scenario-list">
         {SCENARIOS.map((s) => (
           <button
@@ -29,9 +29,9 @@ export default function KVCacheSidebar({
         ))}
       </div>
 
-      <label className="control-label" style={{ marginTop: 12 }}>
-        Cache Capacity: {maxBlocks} blocks
-      </label>
+      <span className="control-label" style={{ marginLeft: "auto" }}>
+        Capacity: {maxBlocks}
+      </span>
       <input
         type="range"
         min={10}

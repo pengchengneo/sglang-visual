@@ -2,13 +2,13 @@
   padding: 20px 24px;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 12px;
 }
 
 .kv-cache-header h2 {
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 700;
-  margin: 0 0 4px;
+  margin: 0 0 2px;
 }
 
 .page-subtitle {
@@ -17,78 +17,104 @@
   margin: 0;
 }
 
+/* ── Controls bar: scenario + slider in one row ── */
 .kv-cache-controls {
   display: flex;
-  gap: 12px;
+  align-items: center;
+  gap: 16px;
   flex-wrap: wrap;
-}
-
-.kv-cache-controls .scenario-list {
-  display: flex;
-  gap: 4px;
-  flex-wrap: wrap;
-}
-
-.kv-cache-controls .scenario-btn {
-  padding: 5px 12px;
+  padding: 10px 14px;
+  background: var(--bg-card);
   border: 1px solid var(--border);
-  border-radius: 6px;
-  background: var(--bg);
-  color: var(--text-secondary);
-  font-size: 12px;
-  cursor: pointer;
-  transition: all 0.15s;
+  border-radius: var(--radius);
 }
 
-.kv-cache-controls .scenario-btn.active {
-  background: var(--accent);
-  color: #fff;
-  border-color: var(--accent);
-}
-
-.kv-cache-controls .control-label {
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--text-secondary);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  display: block;
-  margin-bottom: 6px;
-}
-
-.kv-cache-controls .sidebar-range {
+.kv-cache-sidebar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
   width: 100%;
 }
 
-.kv-cache-message {
-  padding: 8px 12px;
-  background: var(--bg-hover);
-  border-radius: 8px;
-  font-size: 13px;
-  color: var(--text);
-  font-family: "SF Mono", "Fira Code", monospace;
-  min-height: 20px;
+.kv-cache-sidebar .control-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  margin: 0;
 }
 
+.kv-cache-sidebar .scenario-list {
+  display: flex;
+  gap: 0;
+  background: var(--bg-hover);
+  border-radius: 8px;
+  padding: 2px;
+}
+
+.kv-cache-sidebar .scenario-btn {
+  padding: 5px 14px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+
+.kv-cache-sidebar .scenario-btn:hover {
+  color: var(--text);
+}
+
+.kv-cache-sidebar .scenario-btn.active {
+  background: var(--bg-card);
+  color: var(--text);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.kv-cache-sidebar .sidebar-range {
+  width: 140px;
+  accent-color: var(--accent);
+}
+
+/* ── Message bar ── */
+.kv-cache-message {
+  padding: 6px 12px;
+  background: var(--bg-hover);
+  border-radius: 6px;
+  font-size: 12px;
+  color: var(--text);
+  font-family: "SF Mono", "Fira Code", monospace;
+  min-height: 18px;
+}
+
+/* ── Main content: tree + memory pool ── */
 .kv-cache-content {
   display: flex;
-  gap: 20px;
-  flex: 1;
+  gap: 16px;
   min-height: 0;
 }
 
 .kv-cache-tree-panel {
   flex: 1;
   min-width: 0;
+  max-height: 460px;
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 16px;
+  padding: 12px;
   overflow: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .kv-cache-memory-panel {
-  width: 300px;
+  width: 280px;
   flex-shrink: 0;
 }
 
