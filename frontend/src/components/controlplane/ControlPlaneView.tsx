@@ -9,7 +9,7 @@
  * shows side-by-side DP groups.
  */
 
-import type { SchedulePolicy, SpecAlgorithm } from "../../App";
+import type { SchedulePolicy, SpecAlgorithm } from "../../contexts/AppContext";
 import type { ModelConfig } from "../../types/model";
 import "./ControlPlaneView.css";
 

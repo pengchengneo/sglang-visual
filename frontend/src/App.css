@@ -1,13 +1,13 @@
 /* ── App Layout ── */
 .app {
-  padding-top: 60px;
+  padding-top: 52px;
 }
 
 /* ── App Body (sidebar + main) ── */
 .app-body {
   display: flex;
   flex-direction: row;
-  min-height: calc(100vh - 60px);
+  min-height: calc(100vh - 52px);
 }
 
 /* ── Main Content ── */

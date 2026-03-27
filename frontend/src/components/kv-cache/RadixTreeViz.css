@@ -1,0 +1,6 @@
+.radix-tree-svg { width: 100%; height: auto; max-height: 420px; }
+.radix-edge { stroke-width: 2; transition: stroke 0.3s, stroke-opacity 0.3s; }
+.radix-node rect { transition: fill-opacity 0.3s, stroke 0.3s, stroke-width 0.2s; }
+.radix-node.highlighted rect { fill-opacity: 0.3; filter: drop-shadow(0 0 6px currentColor); }
+.radix-node-label { font-size: 11px; font-weight: 600; font-family: "SF Mono", "Fira Code", monospace; }
+.radix-node-ref { font-size: 10px; }

@@ -1,0 +1,20 @@
+.cb-viz { display: flex; align-items: flex-start; gap: 12px; }
+.cb-queue, .cb-batch { flex: 1; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px; min-width: 0; }
+.cb-queue-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+.cb-queue-title { font-size: 13px; font-weight: 600; color: var(--text); }
+.cb-queue-count { font-size: 12px; color: var(--text-secondary); font-variant-numeric: tabular-nums; background: var(--bg-hover); padding: 2px 8px; border-radius: 4px; }
+.cb-queue-list { display: flex; flex-direction: column; gap: 6px; }
+.cb-empty { font-size: 12px; color: var(--text-secondary); text-align: center; padding: 12px; }
+.request-bar { display: flex; align-items: center; gap: 8px; height: 28px; }
+.request-bar.empty-slot { opacity: 0.3; }
+.request-bar-label { font-size: 11px; font-weight: 600; color: var(--text); width: 28px; text-align: right; font-variant-numeric: tabular-nums; }
+.request-bar-track { flex: 1; height: 20px; background: var(--bg-hover); border-radius: 4px; overflow: hidden; position: relative; }
+.request-bar-fill { height: 100%; border-radius: 4px; transition: width 0.3s ease; }
+.request-bar-fill.prefill { opacity: 0.7; background-image: repeating-linear-gradient(45deg, transparent, transparent 4px, rgba(255,255,255,0.15) 4px, rgba(255,255,255,0.15) 8px); }
+.request-bar-info { font-size: 10px; color: var(--text-secondary); width: 48px; text-align: left; font-variant-numeric: tabular-nums; }
+.cb-arrow { display: flex; flex-direction: column; align-items: center; gap: 4px; padding-top: 40px; }
+.cb-arrow-label { font-size: 10px; color: var(--text-secondary); }
+.cb-completed { width: 120px; flex-shrink: 0; }
+.cb-completed-chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.cb-completed-chip { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 20px; border-radius: 4px; font-size: 10px; font-weight: 600; color: #fff; }
+@media (max-width: 900px) { .cb-viz { flex-direction: column; } .cb-arrow { transform: rotate(90deg); padding-top: 0; } }
