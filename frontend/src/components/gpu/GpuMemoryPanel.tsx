@@ -210,6 +210,8 @@ export function GpuMemoryPanel({
 
       {/* Shared Per-GPU Breakdown (rendered once) */}
       <GpuCard
+        title={totalGpus > 1 ? `Identical Breakdown (All ${totalGpus} GPUs)` : "Per-GPU Breakdown"}
+        isStacked={totalGpus > 1}
         breakdown={breakdown}
         kvSlots={kvSlots}
         kvPerToken={kvPerToken}

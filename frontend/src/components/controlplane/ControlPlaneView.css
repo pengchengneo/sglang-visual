@@ -137,3 +137,34 @@
   color: var(--text-secondary);
   font-family: "JetBrains Mono", monospace;
 }
+
+/* ── Horizontal CPU Header ── */
+.cp-cpu-header {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  width: 100%;
+  margin-bottom: 24px;
+}
+.cp-cpu-header .v-connector {
+  transform: rotate(-90deg);
+  margin: 0;
+  padding: 0;
+}
+.cp-cpu-header .v-connector-label {
+  transform: translateY(-50%) rotate(90deg);
+  top: -15px;
+  left: 50%;
+}
+.cp-cpu-header .cp-block {
+  max-width: 240px;
+  padding: 10px 16px;
+}
+.cp-cpu-header .cp-block-name {
+  font-size: 13px;
+}
+.cp-cpu-header .cp-block-sub {
+  font-size: 10px;
+}

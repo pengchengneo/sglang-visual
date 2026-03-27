@@ -172,23 +172,33 @@ function WorkerStack({
   specNumDraftTokens,
   cudaGraphMaxBs,
   disableCudaGraph,
+  gpuRanksLabel,
 }: {
   tpSize: number;
   specAlgorithm: SpecAlgorithm;
   specNumDraftTokens: number;
   cudaGraphMaxBs: number;
   disableCudaGraph: boolean;
+  gpuRanksLabel?: string;
 }) {
   const cudaLabel = disableCudaGraph
     ? "No CUDA Graph"
     : `CUDA Graph (bs ≤ ${cudaGraphMaxBs})`;
+
+  const workerSubtitle = gpuRanksLabel 
+    ? `[${gpuRanksLabel}] · ${tpSize > 1 ? "one worker per TP rank · NCCL" : "single worker"}`
+    : (tpSize > 1 ? "one worker per TP rank · NCCL" : "single worker");
+
+  const gpuSubtitle = gpuRanksLabel
+    ? `[${gpuRanksLabel}] · CUDA kernels · FlashInfer / Triton`
+    : "CUDA kernels · FlashInfer / Triton";
 
   return (
     <>
       {/* TpModelWorker */}
       <CpBlock
         title={`TpModelWorker${tpSize > 1 ? ` × ${tpSize}` : ""}`}
-        subtitle={tpSize > 1 ? "one worker per TP rank · NCCL" : "single worker"}
+        subtitle={workerSubtitle}
         style={S.attention}
       />
 
@@ -218,7 +228,7 @@ function WorkerStack({
       {/* GPU */}
       <CpBlock
         title={`GPU${tpSize > 1 ? ` × ${tpSize}` : ""}`}
-        subtitle="CUDA kernels · FlashInfer / Triton"
+        subtitle={gpuSubtitle}
         style={S.comm}
       />
     </>
@@ -237,6 +247,7 @@ function DpGroupColumn({
   specNumDraftTokens,
   cudaGraphMaxBs,
   disableCudaGraph,
+  gpuRanksLabel,
 }: {
   tpSize: number;
   label?: string;
@@ -247,6 +258,7 @@ function DpGroupColumn({
   specNumDraftTokens: number;
   cudaGraphMaxBs: number;
   disableCudaGraph: boolean;
+  gpuRanksLabel?: string;
 }) {
   return (
     <div className="cp-dp-group">
@@ -266,6 +278,7 @@ function DpGroupColumn({
         specNumDraftTokens={specNumDraftTokens}
         cudaGraphMaxBs={cudaGraphMaxBs}
         disableCudaGraph={disableCudaGraph}
+        gpuRanksLabel={gpuRanksLabel}
       />
     </div>
   );
@@ -299,25 +312,36 @@ export function ControlPlaneView({
 
   return (
     <div className="control-plane-view arch-vertical">
-      {/* HTTP API */}
-      <CpBlock title="HTTP API / Client" subtitle="REST · OpenAI-compatible" style={S.input} />
-
-      <VArrow label="requests" />
-
-      {/* TokenizerManager */}
-      <CpBlock title="TokenizerManager" subtitle="tokenize · detokenize · stream" style={S.norm} />
+      {/* CPU / Entry Layer (Horizontal to save space) */}
+      <div className="cp-cpu-header">
+        <CpBlock title="HTTP API / Client" subtitle="REST · OpenAI-compatible" style={S.input} />
+        <VArrow />
+        <CpBlock title="TokenizerManager" subtitle="tokenize · detokenize · stream" style={S.norm} />
+        {useDpAttn && (
+          <>
+            <VArrow />
+            <CpBlock
+              title="DataParallelController"
+              subtitle={`dp_attention · ${dpSize} schedulers`}
+              style={S.router}
+            />
+          </>
+        )}
+        {!useDpAttn && dpSize > 1 && (
+          <>
+            <VArrow />
+            <CpBlock
+              title="DataParallelRouter"
+              subtitle="round-robin / load balance"
+              style={S.router}
+            />
+          </>
+        )}
+      </div>
 
       {useDpAttn ? (
         /* ── DP Attention mode ── */
         <>
-          <VArrow label="token ids" />
-
-          <CpBlock
-            title="DataParallelController"
-            subtitle={`dp_attention · ${dpSize} schedulers`}
-            style={S.router}
-          />
-
           <VArrow label="route to scheduler" />
 
           {/* Multiple schedulers side by side */}
@@ -353,14 +377,6 @@ export function ControlPlaneView({
       ) : dpSize > 1 ? (
         /* ── Traditional DP mode ── */
         <>
-          <VArrow label="token ids" />
-
-          <CpBlock
-            title="DataParallelRouter"
-            subtitle="round-robin / load balance"
-            style={S.router}
-          />
-
           <VArrow label="route to DP group" />
 
           <div className="cp-dp-fan-out">
@@ -397,7 +413,7 @@ export function ControlPlaneView({
       ) : (
         /* ── Single (no DP) mode ── */
         <>
-          <VArrow label="token ids" />
+          <VArrow label="route to scheduler" />
 
           <SchedulerSection
             schedulePolicy={schedulePolicy}

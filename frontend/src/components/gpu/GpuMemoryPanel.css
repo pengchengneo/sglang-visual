@@ -171,6 +171,33 @@
   border-radius: var(--radius);
   overflow: hidden;
   box-shadow: var(--shadow-sm);
+  position: relative;
+}
+.stacked-card-effect {
+  margin-bottom: 8px;
+}
+.stacked-card-effect::before,
+.stacked-card-effect::after {
+  content: "";
+  position: absolute;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  z-index: -1;
+}
+.stacked-card-effect::before {
+  top: 4px;
+  left: 4px;
+  right: -4px;
+  bottom: -4px;
+  opacity: 0.6;
+}
+.stacked-card-effect::after {
+  top: 8px;
+  left: 8px;
+  right: -8px;
+  bottom: -8px;
+  opacity: 0.3;
 }
 .gpu-breakdown-title {
   display: flex;

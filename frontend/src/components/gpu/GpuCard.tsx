@@ -5,9 +5,11 @@ interface Props {
   breakdown: GpuBreakdown;
   kvSlots: number;
   kvPerToken: number;
+  title?: React.ReactNode;
+  isStacked?: boolean;
 }
 
-export function GpuCard({ breakdown, kvSlots, kvPerToken }: Props) {
+export function GpuCard({ breakdown, kvSlots, kvPerToken, title = "Per-GPU Breakdown", isStacked = false }: Props) {
   const { totalBytes, weights, kvCache, reserved, oom } = breakdown;
 
   const wPct = (weights / totalBytes) * 100;
@@ -15,10 +17,10 @@ export function GpuCard({ breakdown, kvSlots, kvPerToken }: Props) {
   const rPct = (reserved / totalBytes) * 100;
 
   return (
-    <div className={`gpu-breakdown-shared${oom ? " gpu-card-oom" : ""}`}>
+    <div className={`gpu-breakdown-shared${isStacked ? " stacked-card-effect" : ""}${oom ? " gpu-card-oom" : ""}`}>
       <div className="gpu-breakdown-title">
-        <span>Per-GPU Breakdown</span>
-        <span className="gpu-breakdown-total">{formatBytes(totalBytes)}</span>
+        <span>{title}</span>
+        <span className="gpu-breakdown-total">{formatBytes(totalBytes)} / GPU</span>
       </div>
 
       {/* Stacked memory bar */}

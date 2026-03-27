@@ -202,14 +202,16 @@
 .v-connector-line {
   width: 2px;
   height: 22px;
-  background: var(--connector-color);
+  background: linear-gradient(to bottom, var(--connector-color) 50%, transparent 50%);
+  background-size: 100% 8px;
+  animation: flowDown 1.5s linear infinite;
 }
 .v-connector-head {
   width: 0;
   height: 0;
-  border-left: 4px solid transparent;
-  border-right: 4px solid transparent;
-  border-top: 5px solid var(--connector-color);
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-top: 6px solid var(--connector-color);
 }
 .v-connector-label {
   font-size: 10px;
@@ -219,6 +221,12 @@
   top: 50%;
   transform: translateY(-50%);
   white-space: nowrap;
+  font-weight: 500;
+}
+
+@keyframes flowDown {
+  0% { background-position: 0 0; }
+  100% { background-position: 0 8px; }
 }
 
 /* ── Horizontal Connector ── */
@@ -235,9 +243,9 @@
 .h-connector-head {
   width: 0;
   height: 0;
-  border-top: 4px solid transparent;
-  border-bottom: 4px solid transparent;
-  border-left: 5px solid var(--connector-color);
+  border-top: 5px solid transparent;
+  border-bottom: 5px solid transparent;
+  border-left: 6px solid var(--connector-color);
 }
 
 /* ── Section Box ── */
