@@ -1,3 +1,5 @@
+import "./Controls.css";
+
 export type Plane = "control" | "compute";
 
 interface Props {

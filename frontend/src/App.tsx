@@ -1,11 +1,12 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useManifest, useModelData } from "./hooks/useModelData";
 import { PlaneTabBar, type Plane } from "./components/controls/PlaneTabBar";
 import { Sidebar } from "./components/sidebar/Sidebar";
 import { PipelineView } from "./components/pipeline/PipelineView";
 import { GpuMemoryPanel } from "./components/gpu/GpuMemoryPanel";
 import { ControlPlaneView } from "./components/controlplane/ControlPlaneView";
-import { computePerRankParams } from "./utils/tpMath";
+import { ErrorBoundary } from "./components/ErrorBoundary";
+import { computePerRankParams, computePerRankParamsForPpStage } from "./utils/tpMath";
 import "./App.css";
 
 const DEFAULT_GPU_BYTES = 80e9; // 80 GB
@@ -22,10 +23,59 @@ const BYTES_PER_PARAM: Record<Quantization, number> & Record<Dtype, number> = {
   fp16: 2, bf16: 2, fp32: 4,
 };
 
+type Theme = "light" | "dark" | "system";
+
+function getInitialTheme(): Theme {
+  const stored = localStorage.getItem("theme");
+  if (stored === "light" || stored === "dark") return stored;
+  return "system";
+}
+
+function applyTheme(theme: Theme) {
+  const root = document.documentElement;
+  if (theme === "system") {
+    root.removeAttribute("data-theme");
+  } else {
+    root.setAttribute("data-theme", theme);
+  }
+}
+
+function useTheme() {
+  const [theme, setTheme] = useState<Theme>(getInitialTheme);
+
+  useEffect(() => {
+    applyTheme(theme);
+    if (theme === "system") {
+      localStorage.removeItem("theme");
+    } else {
+      localStorage.setItem("theme", theme);
+    }
+  }, [theme]);
+
+  const toggle = () => {
+    setTheme((prev) => {
+      if (prev === "system") {
+        const isDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+        return isDark ? "light" : "dark";
+      }
+      return prev === "light" ? "dark" : "light";
+    });
+  };
+
+  const isDark =
+    theme === "dark" ||
+    (theme === "system" &&
+      typeof window !== "undefined" &&
+      window.matchMedia("(prefers-color-scheme: dark)").matches);
+
+  return { theme, isDark, toggle };
+}
+
 function App() {
-  const { manifest, loading: manifestLoading } = useManifest();
+  const { manifest, loading: manifestLoading, error: manifestError } = useManifest();
   const [selectedPreset, setSelectedPreset] = useState<string | null>(null);
-  const { model, loading: modelLoading } = useModelData(selectedPreset);
+  const { model, loading: modelLoading, error: modelError } = useModelData(selectedPreset);
+  const { isDark, toggle: toggleTheme } = useTheme();
 
   // Parallelism
   const [tpSize, setTpSize] = useState(1);
@@ -73,8 +123,17 @@ function App() {
   const kvBytesPerElement = kvCacheDtype === "fp8" ? 1 : 2;
 
   const perRankParams = useMemo(
-    () => (model ? computePerRankParams(model, tpSize) : 0),
-    [model, tpSize],
+    () => {
+      if (!model) return 0;
+      if (ppSize <= 1) return computePerRankParams(model, tpSize, epSize);
+      // Use the max across all PP stages for worst-case GPU memory
+      let maxParams = 0;
+      for (let p = 0; p < ppSize; p++) {
+        maxParams = Math.max(maxParams, computePerRankParamsForPpStage(model, tpSize, p, ppSize, epSize));
+      }
+      return maxParams;
+    },
+    [model, tpSize, ppSize, epSize],
   );
 
   return (
@@ -128,6 +187,9 @@ function App() {
         />
 
         <main className="main-content">
+          {manifestError && <div className="load-error">{manifestError}</div>}
+          {modelError && <div className="load-error">{modelError}</div>}
+
           {activePlane === "compute" && (
             <>
               {modelLoading && (
@@ -137,29 +199,36 @@ function App() {
               {model && (
                 <div className="split-layout">
                   <div className="panel-left">
-                    <PipelineView
-                      key={model.model_id}
-                      model={model}
-                      tpSize={tpSize}
-                      bytesPerParam={bytesPerParam}
-                      dtype={dtype}
-                      quantization={quantization}
-                    />
+                    <ErrorBoundary fallbackTitle="Pipeline view error">
+                      <PipelineView
+                        key={model.model_id}
+                        model={model}
+                        tpSize={tpSize}
+                        ppSize={ppSize}
+                        epSize={epSize}
+                        bytesPerParam={bytesPerParam}
+                        dtype={dtype}
+                        quantization={quantization}
+                      />
+                    </ErrorBoundary>
                   </div>
                   <div className="panel-right">
-                    <GpuMemoryPanel
-                      config={model.config}
-                      tpSize={tpSize}
-                      dpSize={dpSize}
-                      ppSize={ppSize}
-                      enableDpAttention={enableDpAttention}
-                      perRankParams={perRankParams}
-                      gpuMemoryBytes={gpuMemoryBytes}
-                      memFractionStatic={memFractionStatic}
-                      bytesPerParam={bytesPerParam}
-                      kvBytesPerElement={kvBytesPerElement}
-                      contextLength={contextLength}
-                    />
+                    <ErrorBoundary fallbackTitle="GPU memory panel error">
+                      <GpuMemoryPanel
+                        config={model.config}
+                        tpSize={tpSize}
+                        dpSize={dpSize}
+                        ppSize={ppSize}
+                        epSize={epSize}
+                        enableDpAttention={enableDpAttention}
+                        perRankParams={perRankParams}
+                        gpuMemoryBytes={gpuMemoryBytes}
+                        memFractionStatic={memFractionStatic}
+                        bytesPerParam={bytesPerParam}
+                        kvBytesPerElement={kvBytesPerElement}
+                        contextLength={contextLength}
+                      />
+                    </ErrorBoundary>
                   </div>
                 </div>
               )}
@@ -175,22 +244,35 @@ function App() {
           )}
 
           {activePlane === "control" && (
-            <ControlPlaneView
-              tpSize={tpSize}
-              dpSize={dpSize}
-              ppSize={ppSize}
-              enableDpAttention={enableDpAttention}
-              schedulePolicy={schedulePolicy}
-              chunkedPrefillSize={chunkedPrefillSize}
-              disableRadixCache={disableRadixCache}
-              specAlgorithm={specAlgorithm}
-              specNumDraftTokens={specNumDraftTokens}
-              cudaGraphMaxBs={cudaGraphMaxBs}
-              disableCudaGraph={disableCudaGraph}
-            />
+            <ErrorBoundary fallbackTitle="Control plane error">
+              <ControlPlaneView
+                tpSize={tpSize}
+                dpSize={dpSize}
+                ppSize={ppSize}
+                epSize={epSize}
+                enableDpAttention={enableDpAttention}
+                modelConfig={model?.config ?? null}
+                schedulePolicy={schedulePolicy}
+                chunkedPrefillSize={chunkedPrefillSize}
+                disableRadixCache={disableRadixCache}
+                specAlgorithm={specAlgorithm}
+                specNumDraftTokens={specNumDraftTokens}
+                cudaGraphMaxBs={cudaGraphMaxBs}
+                disableCudaGraph={disableCudaGraph}
+              />
+            </ErrorBoundary>
           )}
         </main>
       </div>
+
+      <button
+        className="theme-toggle"
+        onClick={toggleTheme}
+        title="Toggle theme"
+        aria-label="Toggle theme"
+      >
+        {isDark ? "\u2600\uFE0F" : "\uD83C\uDF19"}
+      </button>
     </div>
   );
 }

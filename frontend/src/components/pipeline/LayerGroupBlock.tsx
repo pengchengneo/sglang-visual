@@ -8,6 +8,7 @@ import {
   formatParams,
 } from "../../utils/tpMath";
 import { LayerBlockSvg, findOperator } from "../layer/LayerBlockSvg";
+import "../layer/Layer.css";
 import { MatrixPartitionViz } from "../matrix/MatrixPartitionViz";
 
 interface Props {

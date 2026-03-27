@@ -1,0 +1,139 @@
+/* ── Control Plane View ── */
+.control-plane-view {
+  padding: 24px 16px 40px;
+}
+
+/* Control plane block (wider than op-block) */
+.cp-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 14px 28px;
+  border-radius: 12px;
+  border: 2px solid;
+  width: 100%;
+  max-width: 380px;
+  transition: all 0.2s ease;
+}
+.cp-block-name {
+  font-weight: 700;
+  font-size: 14px;
+}
+.cp-block-sub {
+  font-size: 11px;
+  opacity: 0.7;
+  margin-top: 2px;
+}
+
+/* Scheduler section — wider */
+.cp-section {
+  max-width: 460px;
+}
+
+/* Sub-blocks inside Scheduler */
+.cp-sub-blocks {
+  display: flex;
+  gap: 10px;
+  width: 100%;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+.cp-sub-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 10px 16px;
+  border-radius: 10px;
+  border: 1.5px solid;
+  flex: 1;
+  min-width: 140px;
+}
+.cp-sub-block-name {
+  font-weight: 600;
+  font-size: 12px;
+}
+.cp-sub-block-sub {
+  font-size: 10px;
+  opacity: 0.6;
+  margin-top: 2px;
+}
+
+/* ── Grayed-out block in control plane ── */
+.cp-block-disabled {
+  opacity: 0.4;
+}
+
+/* ── Control Plane DP Fan-out ── */
+.cp-dp-fan-out {
+  display: flex;
+  flex-direction: row;
+  gap: 16px;
+  justify-content: center;
+  flex-wrap: wrap;
+  width: 100%;
+}
+.cp-dp-group {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+  border: 2px solid var(--border);
+  border-radius: 14px;
+  padding: 16px 12px;
+  min-width: 240px;
+  flex: 1;
+  max-width: 460px;
+  background: var(--cp-dp-group-bg);
+}
+.cp-dp-group-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+/* Narrower cp-block inside DP groups */
+.cp-dp-group .cp-block {
+  max-width: 280px;
+}
+.cp-dp-group .cp-section {
+  max-width: 320px;
+}
+
+/* ── DP Attention annotation in control plane ── */
+.cp-dp-attn-note {
+  margin-top: 12px;
+  padding: 8px 16px;
+  font-size: 11px;
+  color: var(--text-secondary);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  text-align: center;
+  font-family: "JetBrains Mono", monospace;
+}
+
+/* ── EP annotation in control plane ── */
+.cp-ep-note {
+  margin-top: 12px;
+  padding: 10px 16px;
+  background: rgba(207, 250, 254, 0.15);
+  border: 1px solid #67e8f9;
+  border-radius: var(--radius);
+  text-align: center;
+}
+.cp-ep-note-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: #155e75;
+  margin-bottom: 4px;
+}
+.cp-ep-note-detail {
+  font-size: 11px;
+  color: var(--text-secondary);
+  font-family: "JetBrains Mono", monospace;
+}

@@ -10,12 +10,16 @@
  */
 
 import type { SchedulePolicy, SpecAlgorithm } from "../../App";
+import type { ModelConfig } from "../../types/model";
+import "./ControlPlaneView.css";
 
 interface Props {
   tpSize: number;
   dpSize: number;
   ppSize: number;
+  epSize: number;
   enableDpAttention: boolean;
+  modelConfig: ModelConfig | null;
   schedulePolicy: SchedulePolicy;
   chunkedPrefillSize: number;
   disableRadixCache: boolean;
@@ -273,7 +277,9 @@ export function ControlPlaneView({
   tpSize,
   dpSize,
   ppSize,
+  epSize,
   enableDpAttention,
+  modelConfig,
   schedulePolicy,
   chunkedPrefillSize,
   disableRadixCache,
@@ -283,6 +289,8 @@ export function ControlPlaneView({
   disableCudaGraph,
 }: Props) {
   const useDpAttn = enableDpAttention && dpSize > 1;
+  const hasMoe = modelConfig?.n_routed_experts != null;
+  const nExperts = modelConfig?.n_routed_experts ?? 0;
 
   // For traditional DP (non dp_attention), show side-by-side groups
   // For large DP, collapse into a single representative group
@@ -407,6 +415,16 @@ export function ControlPlaneView({
             disableCudaGraph={disableCudaGraph}
           />
         </>
+      )}
+
+      {/* EP annotation */}
+      {epSize > 1 && hasMoe && (
+        <div className="cp-ep-note">
+          <div className="cp-ep-note-title">Expert Parallelism (EP={epSize})</div>
+          <div className="cp-ep-note-detail">
+            MoE layers: {nExperts} experts → {Math.floor(nExperts / epSize)} per EP rank · AllToAll dispatch
+          </div>
+        </div>
       )}
 
       {/* PP annotation */}

@@ -7,11 +7,12 @@
 
 import type { Operator, ModelConfig, Layer, EmbeddingInfo, ModelArchitecture } from "../types/model";
 
-/** Recalculate a single operator's TP weight shape. */
+/** Recalculate a single operator's TP weight shape (with optional EP for MoE). */
 export function recomputeOperatorTpShape(
   op: Operator,
   config: ModelConfig,
-  tpSize: number
+  tpSize: number,
+  epSize = 1,
 ): number[] {
   const full = op.full_weight_shape;
 
@@ -25,10 +26,10 @@ export function recomputeOperatorTpShape(
 
     case "column_parallel":
     case "merged_column_parallel":
-      return computeColumnTpShape(op, config, tpSize);
+      return computeColumnTpShape(op, config, tpSize, epSize);
 
     case "row_parallel":
-      return computeRowTpShape(op, config, tpSize);
+      return computeRowTpShape(op, config, tpSize, epSize);
 
     default:
       return [...full];
@@ -50,12 +51,13 @@ function computeQkvTpShape(config: ModelConfig, tp: number): number[] {
 function computeColumnTpShape(
   op: Operator,
   _config: ModelConfig,
-  tp: number
+  tp: number,
+  ep = 1,
 ): number[] {
   const full = op.full_weight_shape;
   if (full.length === 3) {
-    // MoE expert tensor: [n_experts, out, in] — split out dim
-    return [full[0], Math.floor(full[1] / tp), full[2]];
+    // MoE expert tensor: [n_experts, out, in] — EP splits experts, TP splits out dim
+    return [Math.floor(full[0] / ep), Math.floor(full[1] / tp), full[2]];
   }
   // [out, in] — split out dim
   return [Math.floor(full[0] / tp), full[1]];
@@ -64,12 +66,13 @@ function computeColumnTpShape(
 function computeRowTpShape(
   op: Operator,
   _config: ModelConfig,
-  tp: number
+  tp: number,
+  ep = 1,
 ): number[] {
   const full = op.full_weight_shape;
   if (full.length === 3) {
-    // MoE expert tensor: [n_experts, out, in] — split in dim
-    return [full[0], full[1], Math.floor(full[2] / tp)];
+    // MoE expert tensor: [n_experts, out, in] — EP splits experts, TP splits in dim
+    return [Math.floor(full[0] / ep), full[1], Math.floor(full[2] / tp)];
   }
   // [out, in] — split in dim
   return [full[0], Math.floor(full[1] / tp)];
@@ -88,11 +91,12 @@ export function recomputeEmbeddingTpShape(
 export function recomputeLayerTpShapes(
   layer: Layer,
   config: ModelConfig,
-  tp: number
+  tp: number,
+  ep = 1,
 ): Operator[] {
   return layer.operators.map((op) => ({
     ...op,
-    tp_weight_shape: recomputeOperatorTpShape(op, config, tp),
+    tp_weight_shape: recomputeOperatorTpShape(op, config, tp, ep),
   }));
 }
 
@@ -163,21 +167,105 @@ export function getRankColor(rank: number): string {
   return RANK_COLORS[rank % RANK_COLORS.length];
 }
 
-/** Compute total parameters per rank after TP partitioning. */
+/** Check if an EP size is compatible (must divide num_experts). */
+export function isEpCompatible(config: ModelConfig, ep: number): boolean {
+  if (ep === 1) return true;
+  const nExperts = config.n_routed_experts;
+  if (nExperts == null || nExperts === 0) return false;
+  return nExperts % ep === 0;
+}
+
+/** Compute total parameters per rank after TP + EP partitioning. */
 export function computePerRankParams(
   model: ModelArchitecture,
   tp: number,
+  ep = 1,
 ): number {
   let total = 0;
   total += shapeToParams(recomputeEmbeddingTpShape(model.embedding, tp));
   total += shapeToParams(recomputeEmbeddingTpShape(model.lm_head, tp));
   for (const layer of model.layers) {
+    const isExpertLayer = layer.layer_type === "moe";
+    const layerEp = isExpertLayer ? ep : 1;
     for (const op of layer.operators) {
       if (op.op_type !== "comm") {
-        const tpShape = recomputeOperatorTpShape(op, model.config, tp);
+        const opEp = op.full_weight_shape.length === 3 ? layerEp : 1;
+        const tpShape = recomputeOperatorTpShape(op, model.config, tp, opEp);
         total += shapeToParams(tpShape);
       }
     }
   }
+  return total;
+}
+
+/* ── Pipeline Parallelism (PP) ── */
+
+/** PP stage range: which layers belong to each PP stage. */
+export interface PpStageRange {
+  stage: number;
+  startLayer: number;
+  numLayers: number;
+}
+
+/** Compute layer ranges for PP stages (uniform distribution, lower stages get remainder). */
+export function computePpStageRanges(
+  numLayers: number,
+  ppSize: number,
+): PpStageRange[] {
+  if (ppSize <= 1) {
+    return [{ stage: 0, startLayer: 0, numLayers }];
+  }
+  const base = Math.floor(numLayers / ppSize);
+  const remainder = numLayers % ppSize;
+  const ranges: PpStageRange[] = [];
+  let offset = 0;
+  for (let p = 0; p < ppSize; p++) {
+    const count = base + (p < remainder ? 1 : 0);
+    ranges.push({ stage: p, startLayer: offset, numLayers: count });
+    offset += count;
+  }
+  return ranges;
+}
+
+/** Compute total parameters per rank for a specific PP stage (with TP + EP). */
+export function computePerRankParamsForPpStage(
+  model: ModelArchitecture,
+  tp: number,
+  ppStage: number,
+  ppSize: number,
+  ep = 1,
+): number {
+  if (ppSize <= 1) return computePerRankParams(model, tp, ep);
+
+  const ranges = computePpStageRanges(model.config.num_hidden_layers, ppSize);
+  const range = ranges[ppStage];
+
+  let total = 0;
+
+  // Embedding only on stage 0
+  if (ppStage === 0) {
+    total += shapeToParams(recomputeEmbeddingTpShape(model.embedding, tp));
+  }
+
+  // LM Head only on last stage
+  if (ppStage === ppSize - 1) {
+    total += shapeToParams(recomputeEmbeddingTpShape(model.lm_head, tp));
+  }
+
+  // Layers assigned to this stage
+  for (let i = 0; i < range.numLayers; i++) {
+    const layer = model.layers[range.startLayer + i];
+    if (!layer) continue;
+    const isExpertLayer = layer.layer_type === "moe";
+    const layerEp = isExpertLayer ? ep : 1;
+    for (const op of layer.operators) {
+      if (op.op_type !== "comm") {
+        const opEp = op.full_weight_shape.length === 3 ? layerEp : 1;
+        const tpShape = recomputeOperatorTpShape(op, model.config, tp, opEp);
+        total += shapeToParams(tpShape);
+      }
+    }
+  }
+
   return total;
 }

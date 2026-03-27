@@ -1,5 +1,6 @@
 import { useRef, useState, useLayoutEffect, useCallback } from "react";
 import { sankeyBand } from "../../utils/sankeyMath";
+import "./Connections.css";
 
 interface ConnectorProps {
   containerRef: React.RefObject<HTMLDivElement | null>;

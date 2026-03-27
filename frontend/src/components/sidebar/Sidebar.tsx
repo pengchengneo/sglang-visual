@@ -11,6 +11,7 @@ import type {
 import { ModelSelector } from "../controls/ModelSelector";
 import { GpuControls } from "../controls/GpuControls";
 import { SidebarSection } from "./SidebarSection";
+import "./Sidebar.css";
 import { ParallelismControls } from "./ParallelismControls";
 import { QuantizationControls } from "./QuantizationControls";
 import { SchedulingControls } from "./SchedulingControls";
